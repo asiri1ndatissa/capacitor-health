@@ -14,7 +14,7 @@
   },
   "dependencies": {
     "@capacitor/core": "^8.0.0",
-    "@asiri1ndatissa/capacitor-health": "file:..",
+    "@asiriindatissa/capacitor-health": "file:..",
     "@capacitor/android": "^8.0.0"
   },
   "devDependencies": {

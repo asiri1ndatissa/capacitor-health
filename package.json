@@ -1,5 +1,5 @@
 {
-  "name": "@asiri1ndatissa/capacitor-health",
+  "name": "@asiriindatissa/capacitor-health",
   "version": "8.2.1",
   "description": "Capacitor plugin to interact with data from Health Connect on Android",
   "main": "dist/plugin.cjs.js",
