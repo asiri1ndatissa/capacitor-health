@@ -19,7 +19,7 @@ export interface AuthorizationStatus {
 export interface AvailabilityResult {
   available: boolean;
   /** Platform specific details (for debugging/diagnostics). */
-  platform?: 'ios' | 'android' | 'web';
+  platform?: 'android' | 'web';
   reason?: string;
 }
 
@@ -149,8 +149,7 @@ export interface HealthPlugin {
   getPluginVersion(): Promise<{ version: string }>;
 
   /**
-   * Opens the Health Connect settings screen (Android only).
-   * On iOS, this method does nothing.
+   * Opens the Health Connect settings screen.
    *
    * Use this to direct users to manage their Health Connect permissions
    * or to install Health Connect if not available.
@@ -160,8 +159,7 @@ export interface HealthPlugin {
   openHealthConnectSettings(): Promise<void>;
 
   /**
-   * Shows the app's privacy policy for Health Connect (Android only).
-   * On iOS, this method does nothing.
+   * Shows the app's privacy policy for Health Connect.
    *
    * This displays the same privacy policy screen that Health Connect shows
    * when the user taps "Privacy policy" in the permissions dialog.
@@ -175,8 +173,7 @@ export interface HealthPlugin {
   showPrivacyPolicy(): Promise<void>;
 
   /**
-   * Queries workout sessions from the native health store.
-   * Supported on iOS (HealthKit) and Android (Health Connect).
+   * Queries workout sessions from the native health store on Android (Health Connect).
    *
    * @param options Query options including optional workout type filter, date range, limit, and sort order
    * @returns A promise that resolves with the workout sessions

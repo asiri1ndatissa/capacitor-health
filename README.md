@@ -1,48 +1,24 @@
-# @capgo/capacitor-health
- <a href="https://capgo.app/"><img src='https://raw.githubusercontent.com/Cap-go/capgo/main/assets/capgo_banner.png' alt='Capgo - Instant updates for capacitor'/></a>
+# @asiri1ndatissa/capacitor-health
 
-<div align="center">
-  <h2><a href="https://capgo.app/?ref=plugin_health"> ➡️ Get Instant updates for your App with Capgo</a></h2>
-  <h2><a href="https://capgo.app/consulting/?ref=plugin_health"> Missing a feature? We’ll build the plugin for you 💪</a></h2>
-</div>
-
-Capacitor plugin to read and write health metrics via Apple HealthKit (iOS) and Health Connect (Android). The TypeScript API keeps the same data types and units across platforms so you can build once and deploy everywhere.
+Capacitor plugin to read and write health metrics via Health Connect on Android. The TypeScript API provides a unified interface for health data access.
 
 ## Why Capacitor Health?
 
 The only **free**, **unified** health data plugin for Capacitor supporting the latest native APIs:
 
 - **Health Connect (Android)** - Uses Google's newest health platform (replaces deprecated Google Fit)
-- **HealthKit (iOS)** - Full integration with Apple's health framework
-- **Unified API** - Same TypeScript interface across platforms with consistent units
+- **Unified API** - TypeScript interface with consistent units
 - **Multiple metrics** - Steps, distance, calories, heart rate, weight
 - **Read & Write** - Query historical data and save new health entries
-- **Modern standards** - Supports Android 8.0+ and iOS 14+
-- **Modern package management** - Supports both Swift Package Manager (SPM) and CocoaPods (SPM-ready for Capacitor 8)
+- **Modern standards** - Supports Android 8.0+
 
 Perfect for fitness apps, health trackers, wellness platforms, and medical applications.
-
-## Documentation
-
-The most complete doc is available here: https://capgo.app/docs/plugins/health/
 
 ## Install
 
 ```bash
-npm install @capgo/capacitor-health
+npm install @asiri1ndatissa/capacitor-health
 npx cap sync
-```
-
-## iOS Setup
-
-1. Open your Capacitor application's Xcode workspace and enable the **HealthKit** capability.
-2. Provide usage descriptions in `Info.plist` (update the copy for your product):
-
-```xml
-<key>NSHealthShareUsageDescription</key>
-<string>This app reads your health data to personalise your experience.</string>
-<key>NSHealthUpdateUsageDescription</key>
-<string>This app writes new health entries that you explicitly create.</string>
 ```
 
 ## Android Setup
@@ -110,7 +86,7 @@ await Health.openHealthConnectSettings();
 ## Usage
 
 ```ts
-import { Health } from '@capgo/capacitor-health';
+import { Health } from '@asiri1ndatissa/capacitor-health';
 
 // Verify that the native health SDK is present on this device
 const availability = await Health.isAvailable();
@@ -270,8 +246,7 @@ Get the native Capacitor plugin version
 openHealthConnectSettings() => Promise<void>
 ```
 
-Opens the Health Connect settings screen (Android only).
-On iOS, this method does nothing.
+Opens the Health Connect settings screen.
 
 Use this to direct users to manage their Health Connect permissions
 or to install Health Connect if not available.
@@ -285,8 +260,7 @@ or to install Health Connect if not available.
 showPrivacyPolicy() => Promise<void>
 ```
 
-Shows the app's privacy policy for Health Connect (Android only).
-On iOS, this method does nothing.
+Shows the app's privacy policy for Health Connect.
 
 This displays the same privacy policy screen that Health Connect shows
 when the user taps "Privacy policy" in the permissions dialog.
@@ -304,8 +278,7 @@ or by placing an HTML file at www/privacypolicy.html in your assets.
 queryWorkouts(options: QueryWorkoutsOptions) => Promise<QueryWorkoutsResult>
 ```
 
-Queries workout sessions from the native health store.
-Supported on iOS (HealthKit) and Android (Health Connect).
+Queries workout sessions from the native health store on Android (Health Connect).
 
 | Param         | Type                                                                  | Description                                                                             |
 | ------------- | --------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
@@ -321,11 +294,11 @@ Supported on iOS (HealthKit) and Android (Health Connect).
 
 #### AvailabilityResult
 
-| Prop            | Type                                     | Description                                            |
-| --------------- | ---------------------------------------- | ------------------------------------------------------ |
-| **`available`** | <code>boolean</code>                     |                                                        |
-| **`platform`**  | <code>'ios' \| 'android' \| 'web'</code> | Platform specific details (for debugging/diagnostics). |
-| **`reason`**    | <code>string</code>                      |                                                        |
+| Prop            | Type                            | Description                                            |
+| --------------- | ------------------------------- | ------------------------------------------------------ |
+| **`available`** | <code>boolean</code>            |                                                        |
+| **`platform`**  | <code>'android' \| 'web'</code> | Platform specific details (for debugging/diagnostics). |
+| **`reason`**    | <code>string</code>             |                                                        |
 
 
 #### AuthorizationStatus
@@ -450,4 +423,4 @@ Construct a type with a set of properties K of type T
 
 ### Credits:
 
-this plugin was inspired by the work of https://github.com/perfood/capacitor-healthkit/ for ios and https://github.com/perfood/capacitor-google-fit for Android
+this plugin was inspired by the work of https://github.com/perfood/capacitor-google-fit for Android
