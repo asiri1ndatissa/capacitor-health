@@ -7,6 +7,7 @@ import androidx.health.connect.client.records.ActiveCaloriesBurnedRecord
 import androidx.health.connect.client.records.DistanceRecord
 import androidx.health.connect.client.records.ExerciseSessionRecord
 import androidx.health.connect.client.records.HeartRateRecord
+import androidx.health.connect.client.records.HeightRecord
 import androidx.health.connect.client.records.Record
 import androidx.health.connect.client.records.StepsRecord
 import androidx.health.connect.client.records.WeightRecord
@@ -147,6 +148,16 @@ class HealthManager {
                     samples.add(sample.time to payload)
                 }
             }
+            HealthDataType.HEIGHT -> readRecords(client, HeightRecord::class, startTime, endTime, limit) { record ->
+                val payload = createSamplePayload(
+                    dataType,
+                    record.time,
+                    record.time,
+                    record.height.inMeters,
+                    record.metadata
+                )
+                samples.add(record.time to payload)
+            }
         }
 
         val sorted = samples.sortedBy { it.first }
@@ -242,6 +253,14 @@ class HealthManager {
                     endTime = endTime,
                     endZoneOffset = zoneOffset(endTime),
                     samples = samples
+                )
+                client.insertRecords(listOf(record))
+            }
+            HealthDataType.HEIGHT -> {
+                val record = HeightRecord(
+                    time = startTime,
+                    zoneOffset = zoneOffset(startTime),
+                    height = Length.meters(value)
                 )
                 client.insertRecords(listOf(record))
             }

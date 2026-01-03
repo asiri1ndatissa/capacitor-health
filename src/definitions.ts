@@ -1,4 +1,4 @@
-export type HealthDataType = 'steps' | 'distance' | 'calories' | 'heartRate' | 'weight';
+export type HealthDataType = 'steps' | 'distance' | 'calories' | 'heartRate' | 'weight' | 'height';
 
 export type HealthUnit = 'count' | 'meter' | 'kilocalorie' | 'bpm' | 'kilogram';
 
@@ -117,7 +117,7 @@ export interface WriteSampleOptions {
   value: number;
   /**
    * Optional unit override. If omitted, the default unit for the data type is used
-   * (count for `steps`, meter for `distance`, kilocalorie for `calories`, bpm for `heartRate`, kilogram for `weight`).
+   * (count for `steps`, meter for `distance`, kilocalorie for `calories`, bpm for `heartRate`, kilogram for `weight`, meter for `height`).
    */
   unit?: HealthUnit;
   /** ISO 8601 start date for the sample. Defaults to now. */

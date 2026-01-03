@@ -8,7 +8,7 @@ The only **free**, **unified** health data plugin for Capacitor supporting the l
 
 - **Health Connect (Android)** - Uses Google's newest health platform (replaces deprecated Google Fit)
 - **Unified API** - TypeScript interface with consistent units
-- **Multiple metrics** - Steps, distance, calories, heart rate, weight
+- **Multiple metrics** - Steps, distance, calories, heart rate, weight, height
 - **Read & Write** - Query historical data and save new health entries
 - **Modern standards** - Supports Android 8.0+
 
@@ -26,7 +26,7 @@ npx cap sync
 This plugin now uses [Health Connect](https://developer.android.com/health-and-fitness/guides/health-connect) instead of Google Fit. Make sure your app meets the requirements below:
 
 1. **Min SDK 26+.** Health Connect is only available on Android 8.0 (API 26) and above. The plugin's Gradle setup already targets this level.
-2. **Declare Health permissions.** The plugin manifest ships with the required `<uses-permission>` declarations (`READ_/WRITE_STEPS`, `READ_/WRITE_DISTANCE`, `READ_/WRITE_ACTIVE_CALORIES_BURNED`, `READ_/WRITE_HEART_RATE`, `READ_/WRITE_WEIGHT`). Your app does not need to duplicate them, but you must surface a user-facing rationale because the permissions are considered health sensitive.
+2. **Declare Health permissions.** The plugin manifest ships with the required `<uses-permission>` declarations (`READ_/WRITE_STEPS`, `READ_/WRITE_DISTANCE`, `READ_/WRITE_ACTIVE_CALORIES_BURNED`, `READ_/WRITE_HEART_RATE`, `READ_/WRITE_WEIGHT`, `READ_/WRITE_HEIGHT`). Your app does not need to duplicate them, but you must surface a user-facing rationale because the permissions are considered health sensitive.
 3. **Ensure Health Connect is installed.** Devices on Android 14+ include it by default. For earlier versions the user must install _Health Connect by Android_ from the Play Store. The `Health.isAvailable()` helper exposes the current status so you can prompt accordingly.
 4. **Request runtime access.** The plugin opens the Health Connect permission UI when you call `requestAuthorization`. You should still handle denial flows (e.g., show a message if `checkAuthorization` reports missing scopes).
 5. **Provide a Privacy Policy.** Health Connect requires apps to display a privacy policy explaining how health data is used. See the [Privacy Policy Setup](#privacy-policy-setup) section below.
@@ -124,6 +124,7 @@ await Health.saveSample({
 | `calories`  | `kilocalorie` | Active energy burned       |
 | `heartRate` | `bpm`         | Beats per minute           |
 | `weight`    | `kilogram`    | Body mass                  |
+| `height`    | `meter`       | Body height                |
 
 All write operations expect the default unit shown above. On Android the `metadata` option is currently ignored by Health Connect.
 
@@ -131,17 +132,17 @@ All write operations expect the default unit shown above. On Android the `metada
 
 <docgen-index>
 
-- [`isAvailable()`](#isavailable)
-- [`requestAuthorization(...)`](#requestauthorization)
-- [`checkAuthorization(...)`](#checkauthorization)
-- [`readSamples(...)`](#readsamples)
-- [`saveSample(...)`](#savesample)
-- [`getPluginVersion()`](#getpluginversion)
-- [`openHealthConnectSettings()`](#openhealthconnectsettings)
-- [`showPrivacyPolicy()`](#showprivacypolicy)
-- [`queryWorkouts(...)`](#queryworkouts)
-- [Interfaces](#interfaces)
-- [Type Aliases](#type-aliases)
+* [`isAvailable()`](#isavailable)
+* [`requestAuthorization(...)`](#requestauthorization)
+* [`checkAuthorization(...)`](#checkauthorization)
+* [`readSamples(...)`](#readsamples)
+* [`saveSample(...)`](#savesample)
+* [`getPluginVersion()`](#getpluginversion)
+* [`openHealthConnectSettings()`](#openhealthconnectsettings)
+* [`showPrivacyPolicy()`](#showprivacypolicy)
+* [`queryWorkouts(...)`](#queryworkouts)
+* [Interfaces](#interfaces)
+* [Type Aliases](#type-aliases)
 
 </docgen-index>
 
@@ -158,7 +159,8 @@ Returns whether the current platform supports the native health SDK.
 
 **Returns:** <code>Promise&lt;<a href="#availabilityresult">AvailabilityResult</a>&gt;</code>
 
----
+--------------------
+
 
 ### requestAuthorization(...)
 
@@ -174,7 +176,8 @@ Requests read/write access to the provided data types.
 
 **Returns:** <code>Promise&lt;<a href="#authorizationstatus">AuthorizationStatus</a>&gt;</code>
 
----
+--------------------
+
 
 ### checkAuthorization(...)
 
@@ -190,7 +193,8 @@ Checks authorization status for the provided data types without prompting the us
 
 **Returns:** <code>Promise&lt;<a href="#authorizationstatus">AuthorizationStatus</a>&gt;</code>
 
----
+--------------------
+
 
 ### readSamples(...)
 
@@ -206,7 +210,8 @@ Reads samples for the given data type within the specified time frame.
 
 **Returns:** <code>Promise&lt;<a href="#readsamplesresult">ReadSamplesResult</a>&gt;</code>
 
----
+--------------------
+
 
 ### saveSample(...)
 
@@ -220,7 +225,8 @@ Writes a single sample to the native health store.
 | ------------- | ----------------------------------------------------------------- |
 | **`options`** | <code><a href="#writesampleoptions">WriteSampleOptions</a></code> |
 
----
+--------------------
+
 
 ### getPluginVersion()
 
@@ -232,7 +238,8 @@ Get the native Capacitor plugin version
 
 **Returns:** <code>Promise&lt;{ version: string; }&gt;</code>
 
----
+--------------------
+
 
 ### openHealthConnectSettings()
 
@@ -245,7 +252,8 @@ Opens the Health Connect settings screen.
 Use this to direct users to manage their Health Connect permissions
 or to install Health Connect if not available.
 
----
+--------------------
+
 
 ### showPrivacyPolicy()
 
@@ -262,7 +270,8 @@ The privacy policy URL can be configured by adding a string resource
 named "health_connect_privacy_policy_url" in your app's strings.xml,
 or by placing an HTML file at www/privacypolicy.html in your assets.
 
----
+--------------------
+
 
 ### queryWorkouts(...)
 
@@ -278,9 +287,11 @@ Queries workout sessions from the native health store on Android (Health Connect
 
 **Returns:** <code>Promise&lt;<a href="#queryworkoutsresult">QueryWorkoutsResult</a>&gt;</code>
 
----
+--------------------
+
 
 ### Interfaces
+
 
 #### AvailabilityResult
 
@@ -289,6 +300,7 @@ Queries workout sessions from the native health store on Android (Health Connect
 | **`available`** | <code>boolean</code>            |                                                        |
 | **`platform`**  | <code>'android' \| 'web'</code> | Platform specific details (for debugging/diagnostics). |
 | **`reason`**    | <code>string</code>             |                                                        |
+
 
 #### AuthorizationStatus
 
@@ -299,6 +311,7 @@ Queries workout sessions from the native health store on Android (Health Connect
 | **`writeAuthorized`** | <code>HealthDataType[]</code> |
 | **`writeDenied`**     | <code>HealthDataType[]</code> |
 
+
 #### AuthorizationOptions
 
 | Prop        | Type                          | Description                                             |
@@ -306,11 +319,13 @@ Queries workout sessions from the native health store on Android (Health Connect
 | **`read`**  | <code>HealthDataType[]</code> | Data types that should be readable after authorization. |
 | **`write`** | <code>HealthDataType[]</code> | Data types that should be writable after authorization. |
 
+
 #### ReadSamplesResult
 
 | Prop          | Type                        |
 | ------------- | --------------------------- |
 | **`samples`** | <code>HealthSample[]</code> |
+
 
 #### HealthSample
 
@@ -324,6 +339,7 @@ Queries workout sessions from the native health store on Android (Health Connect
 | **`sourceName`** | <code>string</code>                                       |
 | **`sourceId`**   | <code>string</code>                                       |
 
+
 #### QueryOptions
 
 | Prop            | Type                                                      | Description                                                        |
@@ -334,22 +350,25 @@ Queries workout sessions from the native health store on Android (Health Connect
 | **`limit`**     | <code>number</code>                                       | Maximum number of samples to return (defaults to 100).             |
 | **`ascending`** | <code>boolean</code>                                      | Return results sorted ascending by start date (defaults to false). |
 
+
 #### WriteSampleOptions
 
-| Prop            | Type                                                            | Description                                                                                                                                                                                       |
-| --------------- | --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **`dataType`**  | <code><a href="#healthdatatype">HealthDataType</a></code>       |                                                                                                                                                                                                   |
-| **`value`**     | <code>number</code>                                             |                                                                                                                                                                                                   |
-| **`unit`**      | <code><a href="#healthunit">HealthUnit</a></code>               | Optional unit override. If omitted, the default unit for the data type is used (count for `steps`, meter for `distance`, kilocalorie for `calories`, bpm for `heartRate`, kilogram for `weight`). |
-| **`startDate`** | <code>string</code>                                             | ISO 8601 start date for the sample. Defaults to now.                                                                                                                                              |
-| **`endDate`**   | <code>string</code>                                             | ISO 8601 end date for the sample. Defaults to startDate.                                                                                                                                          |
-| **`metadata`**  | <code><a href="#record">Record</a>&lt;string, string&gt;</code> | Metadata key-value pairs forwarded to the native APIs where supported.                                                                                                                            |
+| Prop            | Type                                                            | Description                                                                                                                                                                                                           |
+| --------------- | --------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **`dataType`**  | <code><a href="#healthdatatype">HealthDataType</a></code>       |                                                                                                                                                                                                                       |
+| **`value`**     | <code>number</code>                                             |                                                                                                                                                                                                                       |
+| **`unit`**      | <code><a href="#healthunit">HealthUnit</a></code>               | Optional unit override. If omitted, the default unit for the data type is used (count for `steps`, meter for `distance`, kilocalorie for `calories`, bpm for `heartRate`, kilogram for `weight`, meter for `height`). |
+| **`startDate`** | <code>string</code>                                             | ISO 8601 start date for the sample. Defaults to now.                                                                                                                                                                  |
+| **`endDate`**   | <code>string</code>                                             | ISO 8601 end date for the sample. Defaults to startDate.                                                                                                                                                              |
+| **`metadata`**  | <code><a href="#record">Record</a>&lt;string, string&gt;</code> | Metadata key-value pairs forwarded to the native APIs where supported.                                                                                                                                                |
+
 
 #### QueryWorkoutsResult
 
 | Prop           | Type                   |
 | -------------- | ---------------------- |
 | **`workouts`** | <code>Workout[]</code> |
+
 
 #### Workout
 
@@ -365,6 +384,7 @@ Queries workout sessions from the native health store on Android (Health Connect
 | **`sourceId`**          | <code>string</code>                                             | Source bundle identifier.                           |
 | **`metadata`**          | <code><a href="#record">Record</a>&lt;string, string&gt;</code> | Additional metadata (if available).                 |
 
+
 #### QueryWorkoutsOptions
 
 | Prop              | Type                                                | Description                                                               |
@@ -375,31 +395,30 @@ Queries workout sessions from the native health store on Android (Health Connect
 | **`limit`**       | <code>number</code>                                 | Maximum number of workouts to return (defaults to 100).                   |
 | **`ascending`**   | <code>boolean</code>                                | Return results sorted ascending by start date (defaults to false).        |
 
+
 ### Type Aliases
+
 
 #### HealthDataType
 
-<code>'steps' | 'distance' | 'calories' | 'heartRate' | 'weight'</code>
+<code>'steps' | 'distance' | 'calories' | 'heartRate' | 'weight' | 'height'</code>
+
 
 #### HealthUnit
 
 <code>'count' | 'meter' | 'kilocalorie' | 'bpm' | 'kilogram'</code>
 
+
 #### Record
 
 Construct a type with a set of properties K of type T
 
-<code>{
- [P in K]: T;
- }</code>
+<code>{ [P in K]: T; }</code>
+
 
 #### WorkoutType
 
-<code>
-  'running' | 'cycling' | 'walking' | 'swimming' | 'yoga' | 'strengthTraining' | 'hiking' | 'tennis' | 'basketball' |
-  'soccer' | 'americanFootball' | 'baseball' | 'crossTraining' | 'elliptical' | 'rowing' | 'stairClimbing' |
-  'traditionalStrengthTraining' | 'waterFitness' | 'waterPolo' | 'waterSports' | 'wrestling' | 'other'
-</code>
+<code>'running' | 'cycling' | 'walking' | 'swimming' | 'yoga' | 'strengthTraining' | 'hiking' | 'tennis' | 'basketball' | 'soccer' | 'americanFootball' | 'baseball' | 'crossTraining' | 'elliptical' | 'rowing' | 'stairClimbing' | 'traditionalStrengthTraining' | 'waterFitness' | 'waterPolo' | 'waterSports' | 'wrestling' | 'other'</code>
 
 </docgen-api>
 
