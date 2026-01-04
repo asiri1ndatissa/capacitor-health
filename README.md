@@ -136,8 +136,10 @@ To query workout sessions, you need to request read permission for `'workouts'`:
 
 ```ts
 // Request permission to read workouts
+// IMPORTANT: To see totalEnergyBurned and totalDistance in workout data,
+// you MUST also request permissions for 'calories' (or 'totalCalories') and 'distance'
 await Health.requestAuthorization({
-  read: ['workouts', 'steps', 'heartRate'], // Include 'workouts' for queryWorkouts()
+  read: ['workouts', 'calories', 'totalCalories', 'distance'], // Include data types for workout metrics
   write: [],
 });
 
@@ -147,9 +149,18 @@ const { workouts } = await Health.queryWorkouts({
   endDate: new Date().toISOString(),
   limit: 10,
 });
+
+// Each workout may include:
+// - workoutType, duration, startDate, endDate (always present)
+// - totalEnergyBurned (if calories/totalCalories permission granted and data exists)
+// - totalDistance (if distance permission granted and data exists)
 ```
 
-Note: `'workouts'` is a special read-only permission type. You cannot write workouts with this plugin.
+**Note:**
+
+- `'workouts'` is a special read-only permission type. You cannot write workouts with this plugin.
+- Workout energy and distance data are aggregated from separate Health Connect records during the workout time period. If you don't request permissions for `calories`/`totalCalories` and `distance`, these fields will be missing from workout results.
+- If `totalEnergyBurned` or `totalDistance` are missing despite having permissions, it means no calorie or distance data was recorded during that workout period in Health Connect.
 
 ## API
 

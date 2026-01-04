@@ -400,9 +400,13 @@ class HealthManager {
                 // Removed dataOriginFilter to get distance from all sources during workout time
             )
             val result = client.aggregate(aggregateRequest)
-            result[DistanceRecord.DISTANCE_TOTAL]?.inMeters
+            val distance = result[DistanceRecord.DISTANCE_TOTAL]?.inMeters
+            if (distance == null) {
+                android.util.Log.d("HealthManager", "No distance data found for workout ${session.startTime} to ${session.endTime}")
+            }
+            distance
         } catch (e: Exception) {
-            android.util.Log.d("HealthManager", "Distance aggregation failed for workout: ${e.message}", e)
+            android.util.Log.w("HealthManager", "Distance aggregation failed for workout: ${e.message}", e)
             null // Permission might not be granted or no data available
         }
 
@@ -413,21 +417,34 @@ class HealthManager {
                 timeRangeFilter = timeRange
             )
             val result = client.aggregate(aggregateRequest)
-            result[ActiveCaloriesBurnedRecord.ACTIVE_CALORIES_TOTAL]?.inKilocalories
-        } catch (e: Exception) {
-            android.util.Log.d("HealthManager", "Active calories aggregation failed, trying total calories: ${e.message}", e)
-            // Fall back to total calories
-            try {
-                val aggregateRequest = AggregateRequest(
-                    metrics = setOf(TotalCaloriesBurnedRecord.ENERGY_TOTAL),
-                    timeRangeFilter = timeRange
-                )
-                val result = client.aggregate(aggregateRequest)
-                result[TotalCaloriesBurnedRecord.ENERGY_TOTAL]?.inKilocalories
-            } catch (e2: Exception) {
-                android.util.Log.d("HealthManager", "Total calories aggregation also failed: ${e2.message}", e2)
-                null // Permission might not be granted or no data available
+            val activeCalories = result[ActiveCaloriesBurnedRecord.ACTIVE_CALORIES_TOTAL]?.inKilocalories
+            if (activeCalories != null && activeCalories > 0) {
+                android.util.Log.d("HealthManager", "Found active calories: $activeCalories kcal")
+                activeCalories
+            } else {
+                android.util.Log.d("HealthManager", "No active calories found, trying total calories")
+                // Fall back to total calories
+                try {
+                    val totalRequest = AggregateRequest(
+                        metrics = setOf(TotalCaloriesBurnedRecord.ENERGY_TOTAL),
+                        timeRangeFilter = timeRange
+                    )
+                    val totalResult = client.aggregate(totalRequest)
+                    val totalCalories = totalResult[TotalCaloriesBurnedRecord.ENERGY_TOTAL]?.inKilocalories
+                    if (totalCalories != null && totalCalories > 0) {
+                        android.util.Log.d("HealthManager", "Found total calories: $totalCalories kcal")
+                    } else {
+                        android.util.Log.w("HealthManager", "No calorie data (active or total) available for workout ${session.startTime} to ${session.endTime}")
+                    }
+                    totalCalories
+                } catch (e2: Exception) {
+                    android.util.Log.w("HealthManager", "Total calories aggregation failed: ${e2.message}", e2)
+                    null
+                }
             }
+        } catch (e: Exception) {
+            android.util.Log.w("HealthManager", "Active calories aggregation failed: ${e.message}", e)
+            null // Permission might not be granted or no data available
         }
 
         return WorkoutAggregatedData(
