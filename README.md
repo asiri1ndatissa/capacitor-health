@@ -26,7 +26,7 @@ npx cap sync
 This plugin now uses [Health Connect](https://developer.android.com/health-and-fitness/guides/health-connect) instead of Google Fit. Make sure your app meets the requirements below:
 
 1. **Min SDK 26+.** Health Connect is only available on Android 8.0 (API 26) and above. The plugin's Gradle setup already targets this level.
-2. **Declare Health permissions.** The plugin manifest ships with the required `<uses-permission>` declarations (`READ_/WRITE_STEPS`, `READ_/WRITE_DISTANCE`, `READ_/WRITE_ACTIVE_CALORIES_BURNED`, `READ_/WRITE_HEART_RATE`, `READ_/WRITE_WEIGHT`, `READ_/WRITE_HEIGHT`). Your app does not need to duplicate them, but you must surface a user-facing rationale because the permissions are considered health sensitive.
+2. **Declare Health permissions.** The plugin manifest ships with the required `<uses-permission>` declarations (`READ_/WRITE_STEPS`, `READ_/WRITE_DISTANCE`, `READ_/WRITE_ACTIVE_CALORIES_BURNED`, `READ_/WRITE_HEART_RATE`, `READ_/WRITE_WEIGHT`, `READ_/WRITE_HEIGHT`, `READ_EXERCISE`). Your app does not need to duplicate them, but you must surface a user-facing rationale because the permissions are considered health sensitive.
 3. **Ensure Health Connect is installed.** Devices on Android 14+ include it by default. For earlier versions the user must install _Health Connect by Android_ from the Play Store. The `Health.isAvailable()` helper exposes the current status so you can prompt accordingly.
 4. **Request runtime access.** The plugin opens the Health Connect permission UI when you call `requestAuthorization`. You should still handle denial flows (e.g., show a message if `checkAuthorization` reports missing scopes).
 5. **Provide a Privacy Policy.** Health Connect requires apps to display a privacy policy explaining how health data is used. See the [Privacy Policy Setup](#privacy-policy-setup) section below.
@@ -95,8 +95,9 @@ if (!availability.available) {
 }
 
 // Ask for separate read/write access scopes
+// Include 'workouts' if you need to query workout sessions
 await Health.requestAuthorization({
-  read: ['steps', 'heartRate', 'weight'],
+  read: ['steps', 'heartRate', 'weight', 'workouts'],
   write: ['weight'],
 });
 
@@ -127,6 +128,27 @@ await Health.saveSample({
 | `height`    | `meter`       | Body height                |
 
 All write operations expect the default unit shown above. On Android the `metadata` option is currently ignored by Health Connect.
+
+### Workouts
+
+To query workout sessions, you need to request read permission for `'workouts'`:
+
+```ts
+// Request permission to read workouts
+await Health.requestAuthorization({
+  read: ['workouts', 'steps', 'heartRate'],  // Include 'workouts' for queryWorkouts()
+  write: [],
+});
+
+// Query recent workouts
+const { workouts } = await Health.queryWorkouts({
+  startDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
+  endDate: new Date().toISOString(),
+  limit: 10,
+});
+```
+
+Note: `'workouts'` is a special read-only permission type. You cannot write workouts with this plugin.
 
 ## API
 
@@ -304,20 +326,20 @@ Queries workout sessions from the native health store on Android (Health Connect
 
 #### AuthorizationStatus
 
-| Prop                  | Type                          |
-| --------------------- | ----------------------------- |
-| **`readAuthorized`**  | <code>HealthDataType[]</code> |
-| **`readDenied`**      | <code>HealthDataType[]</code> |
-| **`writeAuthorized`** | <code>HealthDataType[]</code> |
-| **`writeDenied`**     | <code>HealthDataType[]</code> |
+| Prop                  | Type                                 | Description                                                 |
+| --------------------- | ------------------------------------ | ----------------------------------------------------------- |
+| **`readAuthorized`**  | <code>ReadAuthorizationType[]</code> | Data types (and 'workouts') that are authorized for reading |
+| **`readDenied`**      | <code>ReadAuthorizationType[]</code> | Data types (and 'workouts') that are denied for reading     |
+| **`writeAuthorized`** | <code>HealthDataType[]</code>        | Data types that are authorized for writing                  |
+| **`writeDenied`**     | <code>HealthDataType[]</code>        | Data types that are denied for writing                      |
 
 
 #### AuthorizationOptions
 
-| Prop        | Type                          | Description                                             |
-| ----------- | ----------------------------- | ------------------------------------------------------- |
-| **`read`**  | <code>HealthDataType[]</code> | Data types that should be readable after authorization. |
-| **`write`** | <code>HealthDataType[]</code> | Data types that should be writable after authorization. |
+| Prop        | Type                                 | Description                                                                                                  |
+| ----------- | ------------------------------------ | ------------------------------------------------------------------------------------------------------------ |
+| **`read`**  | <code>ReadAuthorizationType[]</code> | Data types that should be readable after authorization. Include 'workouts' to enable queryWorkouts() method. |
+| **`write`** | <code>HealthDataType[]</code>        | Data types that should be writable after authorization.                                                      |
 
 
 #### ReadSamplesResult
@@ -397,6 +419,14 @@ Queries workout sessions from the native health store on Android (Health Connect
 
 
 ### Type Aliases
+
+
+#### ReadAuthorizationType
+
+Data types that can be requested for read authorization.
+Includes 'workouts' for querying workout sessions via queryWorkouts().
+
+<code><a href="#healthdatatype">HealthDataType</a> | 'workouts'</code>
 
 
 #### HealthDataType

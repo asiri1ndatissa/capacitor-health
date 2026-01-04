@@ -2,17 +2,30 @@ export type HealthDataType = 'steps' | 'distance' | 'calories' | 'heartRate' | '
 
 export type HealthUnit = 'count' | 'meter' | 'kilocalorie' | 'bpm' | 'kilogram';
 
+/**
+ * Data types that can be requested for read authorization.
+ * Includes 'workouts' for querying workout sessions via queryWorkouts().
+ */
+export type ReadAuthorizationType = HealthDataType | 'workouts';
+
 export interface AuthorizationOptions {
-  /** Data types that should be readable after authorization. */
-  read?: HealthDataType[];
+  /**
+   * Data types that should be readable after authorization.
+   * Include 'workouts' to enable queryWorkouts() method.
+   */
+  read?: ReadAuthorizationType[];
   /** Data types that should be writable after authorization. */
   write?: HealthDataType[];
 }
 
 export interface AuthorizationStatus {
-  readAuthorized: HealthDataType[];
-  readDenied: HealthDataType[];
+  /** Data types (and 'workouts') that are authorized for reading */
+  readAuthorized: ReadAuthorizationType[];
+  /** Data types (and 'workouts') that are denied for reading */
+  readDenied: ReadAuthorizationType[];
+  /** Data types that are authorized for writing */
   writeAuthorized: HealthDataType[];
+  /** Data types that are denied for writing */
   writeDenied: HealthDataType[];
 }
 
