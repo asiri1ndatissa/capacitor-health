@@ -10,6 +10,7 @@ import androidx.health.connect.client.records.HeartRateRecord
 import androidx.health.connect.client.records.HeightRecord
 import androidx.health.connect.client.records.Record
 import androidx.health.connect.client.records.StepsRecord
+import androidx.health.connect.client.records.TotalCaloriesBurnedRecord
 import androidx.health.connect.client.records.WeightRecord
 import androidx.health.connect.client.request.ReadRecordsRequest
 import androidx.health.connect.client.time.TimeRangeFilter
@@ -370,7 +371,7 @@ class HealthManager {
         val timeRange = TimeRangeFilter.between(session.startTime, session.endTime)
         // Don't filter by dataOrigin - distance might come from different sources
         // than the workout session itself (e.g., fitness tracker vs workout app)
-        
+
         // Aggregate distance
         val distanceAggregate = try {
             val aggregateRequest = AggregateRequest(
@@ -384,35 +385,66 @@ class HealthManager {
             android.util.Log.d("HealthManager", "Distance aggregation failed for workout: ${e.message}", e)
             null // Permission might not be granted or no data available
         }
-        
+
+        // Aggregate calories - try active calories first, then fall back to total calories
+        val caloriesAggregate = try {
+            val aggregateRequest = AggregateRequest(
+                metrics = setOf(ActiveCaloriesBurnedRecord.ACTIVE_CALORIES_TOTAL),
+                timeRangeFilter = timeRange
+            )
+            val result = client.aggregate(aggregateRequest)
+            result[ActiveCaloriesBurnedRecord.ACTIVE_CALORIES_TOTAL]?.inKilocalories
+        } catch (e: Exception) {
+            android.util.Log.d("HealthManager", "Active calories aggregation failed, trying total calories: ${e.message}", e)
+            // Fall back to total calories
+            try {
+                val aggregateRequest = AggregateRequest(
+                    metrics = setOf(TotalCaloriesBurnedRecord.ENERGY_TOTAL),
+                    timeRangeFilter = timeRange
+                )
+                val result = client.aggregate(aggregateRequest)
+                result[TotalCaloriesBurnedRecord.ENERGY_TOTAL]?.inKilocalories
+            } catch (e2: Exception) {
+                android.util.Log.d("HealthManager", "Total calories aggregation also failed: ${e2.message}", e2)
+                null // Permission might not be granted or no data available
+            }
+        }
+
         return WorkoutAggregatedData(
-            totalDistance = distanceAggregate
+            totalDistance = distanceAggregate,
+            totalEnergyBurned = caloriesAggregate
         )
     }
     
     private data class WorkoutAggregatedData(
-        val totalDistance: Double?
+        val totalDistance: Double?,
+        val totalEnergyBurned: Double?
     )
     
     private fun createWorkoutPayload(session: ExerciseSessionRecord, aggregatedData: WorkoutAggregatedData): JSObject {
         val payload = JSObject()
-        
+
         // Workout type
         payload.put("workoutType", WorkoutType.toWorkoutTypeString(session.exerciseType))
-        
+
         // Duration in seconds
         val durationSeconds = Duration.between(session.startTime, session.endTime).seconds.toInt()
         payload.put("duration", durationSeconds)
-        
+
         // Start and end dates
         payload.put("startDate", formatter.format(session.startTime))
         payload.put("endDate", formatter.format(session.endTime))
-        
+
+        // Total energy burned (aggregated from ActiveCaloriesBurnedRecord or TotalCaloriesBurnedRecord)
+        aggregatedData.totalEnergyBurned?.let { calories ->
+            payload.put("totalEnergyBurned", calories)
+        }
+
         // Total distance (aggregated from DistanceRecord)
         aggregatedData.totalDistance?.let { distance ->
             payload.put("totalDistance", distance)
         }
-        
+
         // Source information
         val dataOrigin = session.metadata.dataOrigin
         payload.put("sourceId", dataOrigin.packageName)
@@ -425,10 +457,10 @@ class HealthManager {
                 payload.put("sourceName", label)
             }
         }
-        
+
         // Note: customMetadata is not available on Metadata in Health Connect
         // Metadata only contains dataOrigin, device, and lastModifiedTime
-        
+
         return payload
     }
 
