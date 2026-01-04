@@ -1,6 +1,6 @@
 {
   "name": "@asiriindatissa/capacitor-health",
-  "version": "8.4.1",
+  "version": "8.4.2",
   "description": "Capacitor plugin to interact with data from Health Connect on Android",
   "main": "dist/plugin.cjs.js",
   "module": "dist/esm/index.js",
