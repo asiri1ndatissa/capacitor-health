@@ -5,8 +5,9 @@ export type HealthUnit = 'count' | 'meter' | 'kilocalorie' | 'bpm' | 'kilogram';
 /**
  * Data types that can be requested for read authorization.
  * Includes 'workouts' for querying workout sessions via queryWorkouts().
+ * Includes 'sleep' for querying sleep sessions via querySleep().
  */
-export type ReadAuthorizationType = HealthDataType | 'workouts';
+export type ReadAuthorizationType = HealthDataType | 'workouts' | 'sleep';
 
 export interface AuthorizationOptions {
   /**
@@ -87,6 +88,8 @@ export type WorkoutType =
   | 'wrestling'
   | 'other';
 
+export type SleepStage = 'unknown' | 'awake' | 'sleeping' | 'outOfBed' | 'awakeInBed' | 'light' | 'deep' | 'rem';
+
 export interface QueryWorkoutsOptions {
   /** Optional workout type filter. If omitted, all workout types are returned. */
   workoutType?: WorkoutType;
@@ -123,6 +126,49 @@ export interface Workout {
 
 export interface QueryWorkoutsResult {
   workouts: Workout[];
+}
+
+export interface QuerySleepOptions {
+  /** Inclusive ISO 8601 start date (defaults to now - 1 day). */
+  startDate?: string;
+  /** Exclusive ISO 8601 end date (defaults to now). */
+  endDate?: string;
+  /** Maximum number of sleep sessions to return (defaults to 100). */
+  limit?: number;
+  /** Return results sorted ascending by start date (defaults to false). */
+  ascending?: boolean;
+}
+
+export interface SleepStageRecord {
+  /** The sleep stage type. */
+  stage: SleepStage;
+  /** ISO 8601 start date of this sleep stage. */
+  startDate: string;
+  /** ISO 8601 end date of this sleep stage. */
+  endDate: string;
+}
+
+export interface SleepSession {
+  /** Title/name of the sleep session (if available). */
+  title?: string;
+  /** Duration of the sleep session in seconds. */
+  duration: number;
+  /** ISO 8601 start date of the sleep session. */
+  startDate: string;
+  /** ISO 8601 end date of the sleep session. */
+  endDate: string;
+  /** Array of sleep stages during the session (if available). */
+  stages?: SleepStageRecord[];
+  /** Source name that recorded the sleep session. */
+  sourceName?: string;
+  /** Source bundle identifier. */
+  sourceId?: string;
+  /** Additional metadata (if available). */
+  metadata?: Record<string, string>;
+}
+
+export interface QuerySleepResult {
+  sleepSessions: SleepSession[];
 }
 
 export interface WriteSampleOptions {
@@ -193,4 +239,13 @@ export interface HealthPlugin {
    * @throws An error if something went wrong
    */
   queryWorkouts(options: QueryWorkoutsOptions): Promise<QueryWorkoutsResult>;
+
+  /**
+   * Queries sleep sessions from the native health store on Android (Health Connect).
+   *
+   * @param options Query options including date range, limit, and sort order
+   * @returns A promise that resolves with the sleep sessions
+   * @throws An error if something went wrong
+   */
+  querySleep(options: QuerySleepOptions): Promise<QuerySleepResult>;
 }

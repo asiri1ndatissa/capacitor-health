@@ -9,6 +9,7 @@ import androidx.health.connect.client.records.ExerciseSessionRecord
 import androidx.health.connect.client.records.HeartRateRecord
 import androidx.health.connect.client.records.HeightRecord
 import androidx.health.connect.client.records.Record
+import androidx.health.connect.client.records.SleepSessionRecord
 import androidx.health.connect.client.records.StepsRecord
 import androidx.health.connect.client.records.TotalCaloriesBurnedRecord
 import androidx.health.connect.client.records.WeightRecord
@@ -32,12 +33,16 @@ class HealthManager {
 
     private val formatter: DateTimeFormatter = DateTimeFormatter.ISO_INSTANT
 
-    fun permissionsFor(readTypes: Collection<HealthDataType>, writeTypes: Collection<HealthDataType>, includeWorkouts: Boolean = false): Set<String> = buildSet {
+    fun permissionsFor(readTypes: Collection<HealthDataType>, writeTypes: Collection<HealthDataType>, includeWorkouts: Boolean = false, includeSleep: Boolean = false): Set<String> = buildSet {
         readTypes.forEach { add(it.readPermission) }
         writeTypes.forEach { add(it.writePermission) }
         // Include workout read permission if explicitly requested
         if (includeWorkouts) {
             add(HealthPermission.getReadPermission(ExerciseSessionRecord::class))
+        }
+        // Include sleep read permission if explicitly requested
+        if (includeSleep) {
+            add(HealthPermission.getReadPermission(SleepSessionRecord::class))
         }
     }
 
@@ -45,7 +50,8 @@ class HealthManager {
         client: HealthConnectClient,
         readTypes: Collection<HealthDataType>,
         writeTypes: Collection<HealthDataType>,
-        includeWorkouts: Boolean = false
+        includeWorkouts: Boolean = false,
+        includeSleep: Boolean = false
     ): JSObject {
         val granted = client.permissionController.getGrantedPermissions()
 
@@ -66,6 +72,16 @@ class HealthManager {
                 readAuthorized.put("workouts")
             } else {
                 readDenied.put("workouts")
+            }
+        }
+
+        // Check sleep permission if requested
+        if (includeSleep) {
+            val sleepPermission = HealthPermission.getReadPermission(SleepSessionRecord::class)
+            if (granted.contains(sleepPermission)) {
+                readAuthorized.put("sleep")
+            } else {
+                readDenied.put("sleep")
             }
         }
 
@@ -499,6 +515,108 @@ class HealthManager {
         // Metadata only contains dataOrigin, device, and lastModifiedTime
 
         return payload
+    }
+
+    suspend fun querySleep(
+        client: HealthConnectClient,
+        startTime: Instant,
+        endTime: Instant,
+        limit: Int,
+        ascending: Boolean
+    ): JSArray {
+        val sleepSessions = mutableListOf<Pair<Instant, JSObject>>()
+        
+        var pageToken: String? = null
+        val pageSize = if (limit > 0) min(limit, MAX_PAGE_SIZE) else DEFAULT_PAGE_SIZE
+        var fetched = 0
+        
+        do {
+            val request = ReadRecordsRequest(
+                recordType = SleepSessionRecord::class,
+                timeRangeFilter = TimeRangeFilter.between(startTime, endTime),
+                pageSize = pageSize,
+                pageToken = pageToken
+            )
+            val response = client.readRecords(request)
+            
+            response.records.forEach { record ->
+                val session = record as SleepSessionRecord
+                val payload = createSleepPayload(session)
+                sleepSessions.add(session.startTime to payload)
+            }
+            
+            fetched += response.records.size
+            pageToken = response.pageToken
+        } while (pageToken != null && (limit <= 0 || fetched < limit))
+        
+        val sorted = sleepSessions.sortedBy { it.first }
+        val ordered = if (ascending) sorted else sorted.asReversed()
+        val limited = if (limit > 0) ordered.take(limit) else ordered
+        
+        val array = JSArray()
+        limited.forEach { array.put(it.second) }
+        return array
+    }
+
+    private fun createSleepPayload(session: SleepSessionRecord): JSObject {
+        val payload = JSObject()
+
+        // Title if available
+        session.title?.let { title ->
+            if (title.isNotBlank()) {
+                payload.put("title", title)
+            }
+        }
+
+        // Duration in seconds
+        val durationSeconds = Duration.between(session.startTime, session.endTime).seconds.toInt()
+        payload.put("duration", durationSeconds)
+
+        // Start and end dates
+        payload.put("startDate", formatter.format(session.startTime))
+        payload.put("endDate", formatter.format(session.endTime))
+
+        // Sleep stages if available
+        if (session.stages.isNotEmpty()) {
+            val stagesArray = JSArray()
+            session.stages.forEach { stage ->
+                val stageObject = JSObject()
+                stageObject.put("stage", sleepStageToString(stage.stage))
+                stageObject.put("startDate", formatter.format(stage.startTime))
+                stageObject.put("endDate", formatter.format(stage.endTime))
+                stagesArray.put(stageObject)
+            }
+            payload.put("stages", stagesArray)
+        }
+
+        // Source information
+        val dataOrigin = session.metadata.dataOrigin
+        payload.put("sourceId", dataOrigin.packageName)
+        payload.put("sourceName", dataOrigin.packageName)
+        session.metadata.device?.let { device ->
+            val manufacturer = device.manufacturer?.takeIf { it.isNotBlank() }
+            val model = device.model?.takeIf { it.isNotBlank() }
+            val label = listOfNotNull(manufacturer, model).joinToString(" ").trim()
+            if (label.isNotEmpty()) {
+                payload.put("sourceName", label)
+            }
+        }
+
+        return payload
+    }
+
+    private fun sleepStageToString(stage: Int): String {
+        return when (stage) {
+            SleepSessionRecord.STAGE_TYPE_UNKNOWN -> "unknown"
+            SleepSessionRecord.STAGE_TYPE_AWAKE -> "awake"
+            SleepSessionRecord.STAGE_TYPE_SLEEPING -> "sleeping"
+            SleepSessionRecord.STAGE_TYPE_OUT_OF_BED -> "outOfBed"
+            SleepSessionRecord.STAGE_TYPE_LIGHT -> "light"
+            SleepSessionRecord.STAGE_TYPE_DEEP -> "deep"
+            SleepSessionRecord.STAGE_TYPE_REM -> "rem"
+            SleepSessionRecord.STAGE_TYPE_AWAKE_IN_BED -> "awakeInBed"
+            else -> "unknown"
+        }
     }
 
     companion object {

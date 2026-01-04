@@ -162,21 +162,68 @@ const { workouts } = await Health.queryWorkouts({
 - Workout energy and distance data are aggregated from separate Health Connect records during the workout time period. If you don't request permissions for `calories`/`totalCalories` and `distance`, these fields will be missing from workout results.
 - If `totalEnergyBurned` or `totalDistance` are missing despite having permissions, it means no calorie or distance data was recorded during that workout period in Health Connect.
 
+### Sleep
+
+To query sleep sessions, you need to request read permission for `'sleep'`:
+
+```ts
+// Request permission to read sleep data
+await Health.requestAuthorization({
+  read: ['sleep'],
+  write: [],
+});
+
+// Query recent sleep sessions
+const { sleepSessions } = await Health.querySleep({
+  startDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
+  endDate: new Date().toISOString(),
+  limit: 10,
+});
+
+// Each sleep session includes:
+// - duration (in seconds), startDate, endDate (always present)
+// - title (optional, if provided by the source app)
+// - stages (optional array of sleep stage records if available)
+// - sourceName, sourceId (source app information)
+
+// Sleep stages can be: 'unknown', 'awake', 'sleeping', 'outOfBed',
+// 'awakeInBed', 'light', 'deep', 'rem'
+```
+
+**Supported Sleep Stages:**
+
+| Stage        | Description                                    |
+| ------------ | ---------------------------------------------- |
+| `unknown`    | Unspecified or unknown if the user is sleeping |
+| `awake`      | The user is awake within a sleep cycle         |
+| `sleeping`   | Generic or non-granular sleep description      |
+| `outOfBed`   | The user gets out of bed during sleep session  |
+| `awakeInBed` | The user is awake in bed                       |
+| `light`      | Light sleep cycle                              |
+| `deep`       | Deep sleep cycle                               |
+| `rem`        | REM sleep cycle                                |
+
+**Note:**
+
+- `'sleep'` is a special read-only permission type. You cannot write sleep data with this plugin.
+- Not all sleep sessions include detailed sleep stages. Some apps may only record the overall sleep duration.
+
 ## API
 
 <docgen-index>
 
-* [`isAvailable()`](#isavailable)
-* [`requestAuthorization(...)`](#requestauthorization)
-* [`checkAuthorization(...)`](#checkauthorization)
-* [`readSamples(...)`](#readsamples)
-* [`saveSample(...)`](#savesample)
-* [`getPluginVersion()`](#getpluginversion)
-* [`openHealthConnectSettings()`](#openhealthconnectsettings)
-* [`showPrivacyPolicy()`](#showprivacypolicy)
-* [`queryWorkouts(...)`](#queryworkouts)
-* [Interfaces](#interfaces)
-* [Type Aliases](#type-aliases)
+- [`isAvailable()`](#isavailable)
+- [`requestAuthorization(...)`](#requestauthorization)
+- [`checkAuthorization(...)`](#checkauthorization)
+- [`readSamples(...)`](#readsamples)
+- [`saveSample(...)`](#savesample)
+- [`getPluginVersion()`](#getpluginversion)
+- [`openHealthConnectSettings()`](#openhealthconnectsettings)
+- [`showPrivacyPolicy()`](#showprivacypolicy)
+- [`queryWorkouts(...)`](#queryworkouts)
+- [`querySleep(...)`](#querysleep)
+- [Interfaces](#interfaces)
+- [Type Aliases](#type-aliases)
 
 </docgen-index>
 
@@ -193,8 +240,7 @@ Returns whether the current platform supports the native health SDK.
 
 **Returns:** <code>Promise&lt;<a href="#availabilityresult">AvailabilityResult</a>&gt;</code>
 
---------------------
-
+---
 
 ### requestAuthorization(...)
 
@@ -210,8 +256,7 @@ Requests read/write access to the provided data types.
 
 **Returns:** <code>Promise&lt;<a href="#authorizationstatus">AuthorizationStatus</a>&gt;</code>
 
---------------------
-
+---
 
 ### checkAuthorization(...)
 
@@ -227,8 +272,7 @@ Checks authorization status for the provided data types without prompting the us
 
 **Returns:** <code>Promise&lt;<a href="#authorizationstatus">AuthorizationStatus</a>&gt;</code>
 
---------------------
-
+---
 
 ### readSamples(...)
 
@@ -244,8 +288,7 @@ Reads samples for the given data type within the specified time frame.
 
 **Returns:** <code>Promise&lt;<a href="#readsamplesresult">ReadSamplesResult</a>&gt;</code>
 
---------------------
-
+---
 
 ### saveSample(...)
 
@@ -259,8 +302,7 @@ Writes a single sample to the native health store.
 | ------------- | ----------------------------------------------------------------- |
 | **`options`** | <code><a href="#writesampleoptions">WriteSampleOptions</a></code> |
 
---------------------
-
+---
 
 ### getPluginVersion()
 
@@ -272,8 +314,7 @@ Get the native Capacitor plugin version
 
 **Returns:** <code>Promise&lt;{ version: string; }&gt;</code>
 
---------------------
-
+---
 
 ### openHealthConnectSettings()
 
@@ -286,8 +327,7 @@ Opens the Health Connect settings screen.
 Use this to direct users to manage their Health Connect permissions
 or to install Health Connect if not available.
 
---------------------
-
+---
 
 ### showPrivacyPolicy()
 
@@ -304,8 +344,7 @@ The privacy policy URL can be configured by adding a string resource
 named "health_connect_privacy_policy_url" in your app's strings.xml,
 or by placing an HTML file at www/privacypolicy.html in your assets.
 
---------------------
-
+---
 
 ### queryWorkouts(...)
 
@@ -321,11 +360,9 @@ Queries workout sessions from the native health store on Android (Health Connect
 
 **Returns:** <code>Promise&lt;<a href="#queryworkoutsresult">QueryWorkoutsResult</a>&gt;</code>
 
---------------------
-
+---
 
 ### Interfaces
-
 
 #### AvailabilityResult
 
@@ -334,7 +371,6 @@ Queries workout sessions from the native health store on Android (Health Connect
 | **`available`** | <code>boolean</code>            |                                                        |
 | **`platform`**  | <code>'android' \| 'web'</code> | Platform specific details (for debugging/diagnostics). |
 | **`reason`**    | <code>string</code>             |                                                        |
-
 
 #### AuthorizationStatus
 
@@ -345,7 +381,6 @@ Queries workout sessions from the native health store on Android (Health Connect
 | **`writeAuthorized`** | <code>HealthDataType[]</code>        | Data types that are authorized for writing                  |
 | **`writeDenied`**     | <code>HealthDataType[]</code>        | Data types that are denied for writing                      |
 
-
 #### AuthorizationOptions
 
 | Prop        | Type                                 | Description                                                                                                  |
@@ -353,13 +388,11 @@ Queries workout sessions from the native health store on Android (Health Connect
 | **`read`**  | <code>ReadAuthorizationType[]</code> | Data types that should be readable after authorization. Include 'workouts' to enable queryWorkouts() method. |
 | **`write`** | <code>HealthDataType[]</code>        | Data types that should be writable after authorization.                                                      |
 
-
 #### ReadSamplesResult
 
 | Prop          | Type                        |
 | ------------- | --------------------------- |
 | **`samples`** | <code>HealthSample[]</code> |
-
 
 #### HealthSample
 
@@ -373,7 +406,6 @@ Queries workout sessions from the native health store on Android (Health Connect
 | **`sourceName`** | <code>string</code>                                       |
 | **`sourceId`**   | <code>string</code>                                       |
 
-
 #### QueryOptions
 
 | Prop            | Type                                                      | Description                                                        |
@@ -383,7 +415,6 @@ Queries workout sessions from the native health store on Android (Health Connect
 | **`endDate`**   | <code>string</code>                                       | Exclusive ISO 8601 end date (defaults to now).                     |
 | **`limit`**     | <code>number</code>                                       | Maximum number of samples to return (defaults to 100).             |
 | **`ascending`** | <code>boolean</code>                                      | Return results sorted ascending by start date (defaults to false). |
-
 
 #### WriteSampleOptions
 
@@ -396,13 +427,11 @@ Queries workout sessions from the native health store on Android (Health Connect
 | **`endDate`**   | <code>string</code>                                             | ISO 8601 end date for the sample. Defaults to startDate.                                                                                                                                                                                  |
 | **`metadata`**  | <code><a href="#record">Record</a>&lt;string, string&gt;</code> | Metadata key-value pairs forwarded to the native APIs where supported.                                                                                                                                                                    |
 
-
 #### QueryWorkoutsResult
 
 | Prop           | Type                   |
 | -------------- | ---------------------- |
 | **`workouts`** | <code>Workout[]</code> |
-
 
 #### Workout
 
@@ -418,7 +447,6 @@ Queries workout sessions from the native health store on Android (Health Connect
 | **`sourceId`**          | <code>string</code>                                             | Source bundle identifier.                           |
 | **`metadata`**          | <code><a href="#record">Record</a>&lt;string, string&gt;</code> | Additional metadata (if available).                 |
 
-
 #### QueryWorkoutsOptions
 
 | Prop              | Type                                                | Description                                                               |
@@ -429,38 +457,40 @@ Queries workout sessions from the native health store on Android (Health Connect
 | **`limit`**       | <code>number</code>                                 | Maximum number of workouts to return (defaults to 100).                   |
 | **`ascending`**   | <code>boolean</code>                                | Return results sorted ascending by start date (defaults to false).        |
 
-
 ### Type Aliases
-
 
 #### ReadAuthorizationType
 
 Data types that can be requested for read authorization.
 Includes 'workouts' for querying workout sessions via queryWorkouts().
 
-<code><a href="#healthdatatype">HealthDataType</a> | 'workouts'</code>
-
+<code>
+  <a href="#healthdatatype">HealthDataType</a> | 'workouts'
+</code>
 
 #### HealthDataType
 
 <code>'steps' | 'distance' | 'calories' | 'totalCalories' | 'heartRate' | 'weight' | 'height'</code>
 
-
 #### HealthUnit
 
 <code>'count' | 'meter' | 'kilocalorie' | 'bpm' | 'kilogram'</code>
-
 
 #### Record
 
 Construct a type with a set of properties K of type T
 
-<code>{ [P in K]: T; }</code>
-
+<code>{
+ [P in K]: T;
+ }</code>
 
 #### WorkoutType
 
-<code>'running' | 'cycling' | 'walking' | 'swimming' | 'yoga' | 'strengthTraining' | 'hiking' | 'tennis' | 'basketball' | 'soccer' | 'americanFootball' | 'baseball' | 'crossTraining' | 'elliptical' | 'rowing' | 'stairClimbing' | 'traditionalStrengthTraining' | 'waterFitness' | 'waterPolo' | 'waterSports' | 'wrestling' | 'other'</code>
+<code>
+  'running' | 'cycling' | 'walking' | 'swimming' | 'yoga' | 'strengthTraining' | 'hiking' | 'tennis' | 'basketball' |
+  'soccer' | 'americanFootball' | 'baseball' | 'crossTraining' | 'elliptical' | 'rowing' | 'stairClimbing' |
+  'traditionalStrengthTraining' | 'waterFitness' | 'waterPolo' | 'waterSports' | 'wrestling' | 'other'
+</code>
 
 </docgen-api>
 
