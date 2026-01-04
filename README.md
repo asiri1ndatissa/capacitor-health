@@ -97,7 +97,7 @@ if (!availability.available) {
 // Ask for separate read/write access scopes
 // Include 'workouts' if you need to query workout sessions
 await Health.requestAuthorization({
-  read: ['steps', 'heartRate', 'weight', 'workouts'],
+  read: ['steps', 'heartRate', 'weight', 'totalCalories', 'workouts'],
   write: ['weight'],
 });
 
@@ -118,14 +118,15 @@ await Health.saveSample({
 
 ### Supported data types
 
-| Identifier  | Default unit  | Notes                      |
-| ----------- | ------------- | -------------------------- |
-| `steps`     | `count`       | Step count deltas          |
-| `distance`  | `meter`       | Walking / running distance |
-| `calories`  | `kilocalorie` | Active energy burned       |
-| `heartRate` | `bpm`         | Beats per minute           |
-| `weight`    | `kilogram`    | Body mass                  |
-| `height`    | `meter`       | Body height                |
+| Identifier      | Default unit  | Notes                      |
+| --------------- | ------------- | -------------------------- |
+| `steps`         | `count`       | Step count deltas          |
+| `distance`      | `meter`       | Walking / running distance |
+| `calories`      | `kilocalorie` | Active energy burned       |
+| `totalCalories` | `kilocalorie` | Total energy burned        |
+| `heartRate`     | `bpm`         | Beats per minute           |
+| `weight`        | `kilogram`    | Body mass                  |
+| `height`        | `meter`       | Body height                |
 
 All write operations expect the default unit shown above. On Android the `metadata` option is currently ignored by Health Connect.
 
@@ -136,7 +137,7 @@ To query workout sessions, you need to request read permission for `'workouts'`:
 ```ts
 // Request permission to read workouts
 await Health.requestAuthorization({
-  read: ['workouts', 'steps', 'heartRate'],  // Include 'workouts' for queryWorkouts()
+  read: ['workouts', 'steps', 'heartRate'], // Include 'workouts' for queryWorkouts()
   write: [],
 });
 
@@ -375,14 +376,14 @@ Queries workout sessions from the native health store on Android (Health Connect
 
 #### WriteSampleOptions
 
-| Prop            | Type                                                            | Description                                                                                                                                                                                                           |
-| --------------- | --------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **`dataType`**  | <code><a href="#healthdatatype">HealthDataType</a></code>       |                                                                                                                                                                                                                       |
-| **`value`**     | <code>number</code>                                             |                                                                                                                                                                                                                       |
-| **`unit`**      | <code><a href="#healthunit">HealthUnit</a></code>               | Optional unit override. If omitted, the default unit for the data type is used (count for `steps`, meter for `distance`, kilocalorie for `calories`, bpm for `heartRate`, kilogram for `weight`, meter for `height`). |
-| **`startDate`** | <code>string</code>                                             | ISO 8601 start date for the sample. Defaults to now.                                                                                                                                                                  |
-| **`endDate`**   | <code>string</code>                                             | ISO 8601 end date for the sample. Defaults to startDate.                                                                                                                                                              |
-| **`metadata`**  | <code><a href="#record">Record</a>&lt;string, string&gt;</code> | Metadata key-value pairs forwarded to the native APIs where supported.                                                                                                                                                |
+| Prop            | Type                                                            | Description                                                                                                                                                                                                                               |
+| --------------- | --------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **`dataType`**  | <code><a href="#healthdatatype">HealthDataType</a></code>       |                                                                                                                                                                                                                                           |
+| **`value`**     | <code>number</code>                                             |                                                                                                                                                                                                                                           |
+| **`unit`**      | <code><a href="#healthunit">HealthUnit</a></code>               | Optional unit override. If omitted, the default unit for the data type is used (count for `steps`, meter for `distance`, kilocalorie for `calories` and `totalCalories`, bpm for `heartRate`, kilogram for `weight`, meter for `height`). |
+| **`startDate`** | <code>string</code>                                             | ISO 8601 start date for the sample. Defaults to now.                                                                                                                                                                                      |
+| **`endDate`**   | <code>string</code>                                             | ISO 8601 end date for the sample. Defaults to startDate.                                                                                                                                                                                  |
+| **`metadata`**  | <code><a href="#record">Record</a>&lt;string, string&gt;</code> | Metadata key-value pairs forwarded to the native APIs where supported.                                                                                                                                                                    |
 
 
 #### QueryWorkoutsResult
@@ -431,7 +432,7 @@ Includes 'workouts' for querying workout sessions via queryWorkouts().
 
 #### HealthDataType
 
-<code>'steps' | 'distance' | 'calories' | 'heartRate' | 'weight' | 'height'</code>
+<code>'steps' | 'distance' | 'calories' | 'totalCalories' | 'heartRate' | 'weight' | 'height'</code>
 
 
 #### HealthUnit

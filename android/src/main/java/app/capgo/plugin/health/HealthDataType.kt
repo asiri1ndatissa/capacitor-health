@@ -7,6 +7,7 @@ import androidx.health.connect.client.records.HeartRateRecord
 import androidx.health.connect.client.records.HeightRecord
 import androidx.health.connect.client.records.Record
 import androidx.health.connect.client.records.StepsRecord
+import androidx.health.connect.client.records.TotalCaloriesBurnedRecord
 import androidx.health.connect.client.records.WeightRecord
 import kotlin.reflect.KClass
 
@@ -18,6 +19,7 @@ enum class HealthDataType(
     STEPS("steps", StepsRecord::class, "count"),
     DISTANCE("distance", DistanceRecord::class, "meter"),
     CALORIES("calories", ActiveCaloriesBurnedRecord::class, "kilocalorie"),
+    TOTAL_CALORIES("totalCalories", TotalCaloriesBurnedRecord::class, "kilocalorie"),
     HEART_RATE("heartRate", HeartRateRecord::class, "bpm"),
     WEIGHT("weight", WeightRecord::class, "kilogram"),
     HEIGHT("height", HeightRecord::class, "meter");

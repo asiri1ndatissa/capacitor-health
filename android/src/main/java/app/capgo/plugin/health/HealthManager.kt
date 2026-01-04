@@ -127,6 +127,16 @@ class HealthManager {
                 )
                 samples.add(record.startTime to payload)
             }
+            HealthDataType.TOTAL_CALORIES -> readRecords(client, TotalCaloriesBurnedRecord::class, startTime, endTime, limit) { record ->
+                val payload = createSamplePayload(
+                    dataType,
+                    record.startTime,
+                    record.endTime,
+                    record.energy.inKilocalories,
+                    record.metadata
+                )
+                samples.add(record.startTime to payload)
+            }
             HealthDataType.WEIGHT -> readRecords(client, WeightRecord::class, startTime, endTime, limit) { record ->
                 val payload = createSamplePayload(
                     dataType,
@@ -230,6 +240,16 @@ class HealthManager {
             }
             HealthDataType.CALORIES -> {
                 val record = ActiveCaloriesBurnedRecord(
+                    startTime = startTime,
+                    startZoneOffset = zoneOffset(startTime),
+                    endTime = endTime,
+                    endZoneOffset = zoneOffset(endTime),
+                    energy = Energy.kilocalories(value)
+                )
+                client.insertRecords(listOf(record))
+            }
+            HealthDataType.TOTAL_CALORIES -> {
+                val record = TotalCaloriesBurnedRecord(
                     startTime = startTime,
                     startZoneOffset = zoneOffset(startTime),
                     endTime = endTime,
