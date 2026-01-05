@@ -8,6 +8,7 @@ import androidx.health.connect.client.records.DistanceRecord
 import androidx.health.connect.client.records.ExerciseSessionRecord
 import androidx.health.connect.client.records.HeartRateRecord
 import androidx.health.connect.client.records.HeightRecord
+import androidx.health.connect.client.records.HydrationRecord
 import androidx.health.connect.client.records.Record
 import androidx.health.connect.client.records.SleepSessionRecord
 import androidx.health.connect.client.records.StepsRecord
@@ -18,6 +19,7 @@ import androidx.health.connect.client.time.TimeRangeFilter
 import androidx.health.connect.client.units.Energy
 import androidx.health.connect.client.units.Length
 import androidx.health.connect.client.units.Mass
+import androidx.health.connect.client.units.Volume
 import androidx.health.connect.client.records.metadata.Metadata
 import java.time.Duration
 import com.getcapacitor.JSArray
@@ -33,7 +35,7 @@ class HealthManager {
 
     private val formatter: DateTimeFormatter = DateTimeFormatter.ISO_INSTANT
 
-    fun permissionsFor(readTypes: Collection<HealthDataType>, writeTypes: Collection<HealthDataType>, includeWorkouts: Boolean = false, includeSleep: Boolean = false): Set<String> = buildSet {
+    fun permissionsFor(readTypes: Collection<HealthDataType>, writeTypes: Collection<HealthDataType>, includeWorkouts: Boolean = false, includeSleep: Boolean = false, includeHydration: Boolean = false): Set<String> = buildSet {
         readTypes.forEach { add(it.readPermission) }
         writeTypes.forEach { add(it.writePermission) }
         // Include workout read permission if explicitly requested
@@ -44,6 +46,10 @@ class HealthManager {
         if (includeSleep) {
             add(HealthPermission.getReadPermission(SleepSessionRecord::class))
         }
+        // Include hydration read permission if explicitly requested
+        if (includeHydration) {
+            add(HealthPermission.getReadPermission(HydrationRecord::class))
+        }
     }
 
     suspend fun authorizationStatus(
@@ -51,7 +57,8 @@ class HealthManager {
         readTypes: Collection<HealthDataType>,
         writeTypes: Collection<HealthDataType>,
         includeWorkouts: Boolean = false,
-        includeSleep: Boolean = false
+        includeSleep: Boolean = false,
+        includeHydration: Boolean = false
     ): JSObject {
         val granted = client.permissionController.getGrantedPermissions()
 
@@ -82,6 +89,16 @@ class HealthManager {
                 readAuthorized.put("sleep")
             } else {
                 readDenied.put("sleep")
+            }
+        }
+
+        // Check hydration permission if requested
+        if (includeHydration) {
+            val hydrationPermission = HealthPermission.getReadPermission(HydrationRecord::class)
+            if (granted.contains(hydrationPermission)) {
+                readAuthorized.put("hydration")
+            } else {
+                readDenied.put("hydration")
             }
         }
 
@@ -617,6 +634,86 @@ class HealthManager {
             SleepSessionRecord.STAGE_TYPE_AWAKE_IN_BED -> "awakeInBed"
             else -> "unknown"
         }
+    }
+
+    suspend fun queryHydration(
+        client: HealthConnectClient,
+        startTime: Instant,
+        endTime: Instant,
+        limit: Int,
+        ascending: Boolean
+    ): JSArray {
+        val hydrationRecords = mutableListOf<Pair<Instant, JSObject>>()
+
+        var pageToken: String? = null
+        val pageSize = if (limit > 0) min(limit, MAX_PAGE_SIZE) else DEFAULT_PAGE_SIZE
+        var fetched = 0
+
+        do {
+            val request = ReadRecordsRequest(
+                recordType = HydrationRecord::class,
+                timeRangeFilter = TimeRangeFilter.between(startTime, endTime),
+                pageSize = pageSize,
+                pageToken = pageToken
+            )
+            val response = client.readRecords(request)
+
+            response.records.forEach { record ->
+                val hydration = record as HydrationRecord
+                val payload = createHydrationPayload(hydration)
+                hydrationRecords.add(hydration.startTime to payload)
+            }
+
+            fetched += response.records.size
+            pageToken = response.pageToken
+        } while (pageToken != null && (limit <= 0 || fetched < limit))
+
+        val sorted = hydrationRecords.sortedBy { it.first }
+        val ordered = if (ascending) sorted else sorted.asReversed()
+        val limited = if (limit > 0) ordered.take(limit) else ordered
+
+        val array = JSArray()
+        limited.forEach { array.put(it.second) }
+        return array
+    }
+
+    private fun createHydrationPayload(hydration: HydrationRecord): JSObject {
+        val payload = JSObject()
+
+        // Volume in liters
+        val volumeLiters = hydration.volume.inLiters
+        payload.put("volume", volumeLiters)
+
+        // Start and end dates
+        payload.put("startDate", formatter.format(hydration.startTime))
+        payload.put("endDate", formatter.format(hydration.endTime))
+
+        // Source information
+        val dataOrigin = hydration.metadata.dataOrigin
+        payload.put("sourceId", dataOrigin.packageName)
+        payload.put("sourceName", dataOrigin.packageName)
+        hydration.metadata.device?.let { device ->
+            val manufacturer = device.manufacturer?.takeIf { it.isNotBlank() }
+            val model = device.model?.takeIf { it.isNotBlank() }
+            val label = listOfNotNull(manufacturer, model).joinToString(" ").trim()
+            if (label.isNotEmpty()) {
+                payload.put("sourceName", label)
+            }
+        }
+
+        // Metadata if available
+        if (hydration.metadata.clientRecordId != null || hydration.metadata.clientRecordVersion > 0) {
+            val metadataObj = JSObject()
+            hydration.metadata.clientRecordId?.let { metadataObj.put("clientRecordId", it) }
+            if (hydration.metadata.clientRecordVersion > 0) {
+                metadataObj.put("clientRecordVersion", hydration.metadata.clientRecordVersion)
+            }
+            if (metadataObj.length() > 0) {
+                payload.put("metadata", metadataObj)
+            }
+        }
+
+        return payload
     }
 
     companion object {

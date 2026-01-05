@@ -22,6 +22,13 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 
+data class ReadAuthorizationTypes(
+    val dataTypes: List<HealthDataType>,
+    val includeWorkouts: Boolean,
+    val includeSleep: Boolean,
+    val includeHydration: Boolean
+)
+
 @CapacitorPlugin(name = "Health")
 class HealthPlugin : Plugin() {
     private val pluginVersion = "7.2.14"
@@ -34,6 +41,7 @@ class HealthPlugin : Plugin() {
     private var pendingWriteTypes: List<HealthDataType> = emptyList()
     private var pendingIncludeWorkouts: Boolean = false
     private var pendingIncludeSleep: Boolean = false
+    private var pendingIncludeHydration: Boolean = false
 
     override fun handleOnDestroy() {
         super.handleOnDestroy()
@@ -48,8 +56,8 @@ class HealthPlugin : Plugin() {
 
     @PluginMethod
     fun requestAuthorization(call: PluginCall) {
-        val (readTypes, includeWorkouts, includeSleep) = try {
-            parseTypeListWithWorkoutsAndSleep(call, "read")
+        val readAuth = try {
+            parseReadAuthorizationTypes(call, "read")
         } catch (e: IllegalArgumentException) {
             call.reject(e.message, null, e)
             return
@@ -64,26 +72,47 @@ class HealthPlugin : Plugin() {
 
         pluginScope.launch {
             val client = getClientOrReject(call) ?: return@launch
-            val permissions = manager.permissionsFor(readTypes, writeTypes, includeWorkouts, includeSleep)
+            val permissions = manager.permissionsFor(
+                readAuth.dataTypes,
+                writeTypes,
+                readAuth.includeWorkouts,
+                readAuth.includeSleep,
+                readAuth.includeHydration
+            )
 
             if (permissions.isEmpty()) {
-                val status = manager.authorizationStatus(client, readTypes, writeTypes, includeWorkouts, includeSleep)
+                val status = manager.authorizationStatus(
+                    client,
+                    readAuth.dataTypes,
+                    writeTypes,
+                    readAuth.includeWorkouts,
+                    readAuth.includeSleep,
+                    readAuth.includeHydration
+                )
                 call.resolve(status)
                 return@launch
             }
 
             val granted = client.permissionController.getGrantedPermissions()
             if (granted.containsAll(permissions)) {
-                val status = manager.authorizationStatus(client, readTypes, writeTypes, includeWorkouts, includeSleep)
+                val status = manager.authorizationStatus(
+                    client,
+                    readAuth.dataTypes,
+                    writeTypes,
+                    readAuth.includeWorkouts,
+                    readAuth.includeSleep,
+                    readAuth.includeHydration
+                )
                 call.resolve(status)
                 return@launch
             }
 
             // Store types for callback
-            pendingReadTypes = readTypes
+            pendingReadTypes = readAuth.dataTypes
             pendingWriteTypes = writeTypes
-            pendingIncludeWorkouts = includeWorkouts
-            pendingIncludeSleep = includeSleep
+            pendingIncludeWorkouts = readAuth.includeWorkouts
+            pendingIncludeSleep = readAuth.includeSleep
+            pendingIncludeHydration = readAuth.includeHydration
 
             // Create intent using the Health Connect permission contract
             val intent = permissionContract.createIntent(context, permissions)
@@ -108,22 +137,24 @@ class HealthPlugin : Plugin() {
         val writeTypes = pendingWriteTypes
         val includeWorkouts = pendingIncludeWorkouts
         val includeSleep = pendingIncludeSleep
+        val includeHydration = pendingIncludeHydration
         pendingReadTypes = emptyList()
         pendingWriteTypes = emptyList()
         pendingIncludeWorkouts = false
         pendingIncludeSleep = false
+        pendingIncludeHydration = false
 
         pluginScope.launch {
             val client = getClientOrReject(call) ?: return@launch
-            val status = manager.authorizationStatus(client, readTypes, writeTypes, includeWorkouts, includeSleep)
+            val status = manager.authorizationStatus(client, readTypes, writeTypes, includeWorkouts, includeSleep, includeHydration)
             call.resolve(status)
         }
     }
 
     @PluginMethod
     fun checkAuthorization(call: PluginCall) {
-        val (readTypes, includeWorkouts, includeSleep) = try {
-            parseTypeListWithWorkoutsAndSleep(call, "read")
+        val readAuth = try {
+            parseReadAuthorizationTypes(call, "read")
         } catch (e: IllegalArgumentException) {
             call.reject(e.message, null, e)
             return
@@ -138,7 +169,14 @@ class HealthPlugin : Plugin() {
 
         pluginScope.launch {
             val client = getClientOrReject(call) ?: return@launch
-            val status = manager.authorizationStatus(client, readTypes, writeTypes, includeWorkouts, includeSleep)
+            val status = manager.authorizationStatus(
+                client,
+                readAuth.dataTypes,
+                writeTypes,
+                readAuth.includeWorkouts,
+                readAuth.includeSleep,
+                readAuth.includeHydration
+            )
             call.resolve(status)
         }
     }
@@ -273,24 +311,26 @@ class HealthPlugin : Plugin() {
         return result
     }
 
-    private fun parseTypeListWithWorkoutsAndSleep(call: PluginCall, key: String): Triple<List<HealthDataType>, Boolean, Boolean> {
+    private fun parseReadAuthorizationTypes(call: PluginCall, key: String): ReadAuthorizationTypes {
         val array = call.getArray(key) ?: JSArray()
         val result = mutableListOf<HealthDataType>()
         var includeWorkouts = false
         var includeSleep = false
+        var includeHydration = false
         for (i in 0 until array.length()) {
             val identifier = array.optString(i, null) ?: continue
-            if (identifier == "workouts") {
-                includeWorkouts = true
-            } else if (identifier == "sleep") {
-                includeSleep = true
-            } else {
-                val dataType = HealthDataType.from(identifier)
-                    ?: throw IllegalArgumentException("Unsupported data type: $identifier")
-                result.add(dataType)
+            when (identifier) {
+                "workouts" -> includeWorkouts = true
+                "sleep" -> includeSleep = true
+                "hydration" -> includeHydration = true
+                else -> {
+                    val dataType = HealthDataType.from(identifier)
+                        ?: throw IllegalArgumentException("Unsupported data type: $identifier")
+                    result.add(dataType)
+                }
             }
         }
-        return Triple(result, includeWorkouts, includeSleep)
+        return ReadAuthorizationTypes(result, includeWorkouts, includeSleep, includeHydration)
     }
 
     private fun getClientOrReject(call: PluginCall): HealthConnectClient? {
@@ -424,6 +464,42 @@ class HealthPlugin : Plugin() {
                 call.resolve(result)
             } catch (e: Exception) {
                 call.reject(e.message ?: "Failed to query sleep sessions.", null, e)
+            }
+        }
+    }
+
+    @PluginMethod
+    fun queryHydration(call: PluginCall) {
+        val limit = (call.getInt("limit") ?: DEFAULT_LIMIT).coerceAtLeast(0)
+        val ascending = call.getBoolean("ascending") ?: false
+
+        val startInstant = try {
+            manager.parseInstant(call.getString("startDate"), Instant.now().minus(DEFAULT_PAST_DURATION))
+        } catch (e: DateTimeParseException) {
+            call.reject(e.message, null, e)
+            return
+        }
+
+        val endInstant = try {
+            manager.parseInstant(call.getString("endDate"), Instant.now())
+        } catch (e: DateTimeParseException) {
+            call.reject(e.message, null, e)
+            return
+        }
+
+        if (endInstant.isBefore(startInstant)) {
+            call.reject("endDate must be greater than or equal to startDate")
+            return
+        }
+
+        pluginScope.launch {
+            val client = getClientOrReject(call) ?: return@launch
+            try {
+                val hydrationRecords = manager.queryHydration(client, startInstant, endInstant, limit, ascending)
+                val result = JSObject().apply { put("hydrationRecords", hydrationRecords) }
+                call.resolve(result)
+            } catch (e: Exception) {
+                call.reject(e.message ?: "Failed to query hydration records.", null, e)
             }
         }
     }

@@ -5,6 +5,8 @@ import type {
   AuthorizationStatus,
   AvailabilityResult,
   HealthPlugin,
+  QueryHydrationOptions,
+  QueryHydrationResult,
   QueryOptions,
   QuerySleepOptions,
   QuerySleepResult,
@@ -57,5 +59,9 @@ export class HealthWeb extends WebPlugin implements HealthPlugin {
 
   async querySleep(_options: QuerySleepOptions): Promise<QuerySleepResult> {
     throw this.unimplemented('Querying sleep sessions is only available on native platforms.');
+  }
+
+  async queryHydration(_options: QueryHydrationOptions): Promise<QueryHydrationResult> {
+    throw this.unimplemented('Querying hydration records is only available on native platforms.');
   }
 }

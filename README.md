@@ -222,6 +222,7 @@ const { sleepSessions } = await Health.querySleep({
 * [`showPrivacyPolicy()`](#showprivacypolicy)
 * [`queryWorkouts(...)`](#queryworkouts)
 * [`querySleep(...)`](#querysleep)
+* [`queryHydration(...)`](#queryhydration)
 * [Interfaces](#interfaces)
 * [Type Aliases](#type-aliases)
 
@@ -388,6 +389,23 @@ Queries sleep sessions from the native health store on Android (Health Connect).
 --------------------
 
 
+### queryHydration(...)
+
+```typescript
+queryHydration(options: QueryHydrationOptions) => Promise<QueryHydrationResult>
+```
+
+Queries hydration records from the native health store on Android (Health Connect).
+
+| Param         | Type                                                                    | Description                                               |
+| ------------- | ----------------------------------------------------------------------- | --------------------------------------------------------- |
+| **`options`** | <code><a href="#queryhydrationoptions">QueryHydrationOptions</a></code> | Query options including date range, limit, and sort order |
+
+**Returns:** <code>Promise&lt;<a href="#queryhydrationresult">QueryHydrationResult</a>&gt;</code>
+
+--------------------
+
+
 ### Interfaces
 
 
@@ -534,6 +552,35 @@ Queries sleep sessions from the native health store on Android (Health Connect).
 | **`ascending`** | <code>boolean</code> | Return results sorted ascending by start date (defaults to false). |
 
 
+#### QueryHydrationResult
+
+| Prop                   | Type                           |
+| ---------------------- | ------------------------------ |
+| **`hydrationRecords`** | <code>HydrationRecord[]</code> |
+
+
+#### HydrationRecord
+
+| Prop             | Type                                                            | Description                                  |
+| ---------------- | --------------------------------------------------------------- | -------------------------------------------- |
+| **`volume`**     | <code>number</code>                                             | Volume of water consumed in liters.          |
+| **`startDate`**  | <code>string</code>                                             | ISO 8601 start date of the hydration record. |
+| **`endDate`**    | <code>string</code>                                             | ISO 8601 end date of the hydration record.   |
+| **`sourceName`** | <code>string</code>                                             | Source name that recorded the hydration.     |
+| **`sourceId`**   | <code>string</code>                                             | Source bundle identifier.                    |
+| **`metadata`**   | <code><a href="#record">Record</a>&lt;string, string&gt;</code> | Additional metadata (if available).          |
+
+
+#### QueryHydrationOptions
+
+| Prop            | Type                 | Description                                                        |
+| --------------- | -------------------- | ------------------------------------------------------------------ |
+| **`startDate`** | <code>string</code>  | Inclusive ISO 8601 start date (defaults to now - 1 day).           |
+| **`endDate`**   | <code>string</code>  | Exclusive ISO 8601 end date (defaults to now).                     |
+| **`limit`**     | <code>number</code>  | Maximum number of hydration records to return (defaults to 100).   |
+| **`ascending`** | <code>boolean</code> | Return results sorted ascending by start date (defaults to false). |
+
+
 ### Type Aliases
 
 
@@ -542,8 +589,9 @@ Queries sleep sessions from the native health store on Android (Health Connect).
 Data types that can be requested for read authorization.
 Includes 'workouts' for querying workout sessions via queryWorkouts().
 Includes 'sleep' for querying sleep sessions via querySleep().
+Includes 'hydration' for querying hydration records via queryHydration().
 
-<code><a href="#healthdatatype">HealthDataType</a> | 'workouts' | 'sleep'</code>
+<code><a href="#healthdatatype">HealthDataType</a> | 'workouts' | 'sleep' | 'hydration'</code>
 
 
 #### HealthDataType

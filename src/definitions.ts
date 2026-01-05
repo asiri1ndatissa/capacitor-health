@@ -6,8 +6,9 @@ export type HealthUnit = 'count' | 'meter' | 'kilocalorie' | 'bpm' | 'kilogram';
  * Data types that can be requested for read authorization.
  * Includes 'workouts' for querying workout sessions via queryWorkouts().
  * Includes 'sleep' for querying sleep sessions via querySleep().
+ * Includes 'hydration' for querying hydration records via queryHydration().
  */
-export type ReadAuthorizationType = HealthDataType | 'workouts' | 'sleep';
+export type ReadAuthorizationType = HealthDataType | 'workouts' | 'sleep' | 'hydration';
 
 export interface AuthorizationOptions {
   /**
@@ -171,6 +172,36 @@ export interface QuerySleepResult {
   sleepSessions: SleepSession[];
 }
 
+export interface QueryHydrationOptions {
+  /** Inclusive ISO 8601 start date (defaults to now - 1 day). */
+  startDate?: string;
+  /** Exclusive ISO 8601 end date (defaults to now). */
+  endDate?: string;
+  /** Maximum number of hydration records to return (defaults to 100). */
+  limit?: number;
+  /** Return results sorted ascending by start date (defaults to false). */
+  ascending?: boolean;
+}
+
+export interface HydrationRecord {
+  /** Volume of water consumed in liters. */
+  volume: number;
+  /** ISO 8601 start date of the hydration record. */
+  startDate: string;
+  /** ISO 8601 end date of the hydration record. */
+  endDate: string;
+  /** Source name that recorded the hydration. */
+  sourceName?: string;
+  /** Source bundle identifier. */
+  sourceId?: string;
+  /** Additional metadata (if available). */
+  metadata?: Record<string, string>;
+}
+
+export interface QueryHydrationResult {
+  hydrationRecords: HydrationRecord[];
+}
+
 export interface WriteSampleOptions {
   dataType: HealthDataType;
   value: number;
@@ -248,4 +279,13 @@ export interface HealthPlugin {
    * @throws An error if something went wrong
    */
   querySleep(options: QuerySleepOptions): Promise<QuerySleepResult>;
+
+  /**
+   * Queries hydration records from the native health store on Android (Health Connect).
+   *
+   * @param options Query options including date range, limit, and sort order
+   * @returns A promise that resolves with the hydration records
+   * @throws An error if something went wrong
+   */
+  queryHydration(options: QueryHydrationOptions): Promise<QueryHydrationResult>;
 }
