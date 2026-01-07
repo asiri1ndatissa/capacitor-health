@@ -6,13 +6,11 @@ import androidx.health.connect.client.request.AggregateRequest
 import androidx.health.connect.client.records.ActiveCaloriesBurnedRecord
 import androidx.health.connect.client.records.DistanceRecord
 import androidx.health.connect.client.records.ExerciseSessionRecord
-import androidx.health.connect.client.records.HeartRateRecord
 import androidx.health.connect.client.records.HeightRecord
 import androidx.health.connect.client.records.HydrationRecord
 import androidx.health.connect.client.records.Record
 import androidx.health.connect.client.records.SleepSessionRecord
 import androidx.health.connect.client.records.StepsRecord
-import androidx.health.connect.client.records.TotalCaloriesBurnedRecord
 import androidx.health.connect.client.records.WeightRecord
 import androidx.health.connect.client.request.ReadRecordsRequest
 import androidx.health.connect.client.time.TimeRangeFilter
@@ -160,16 +158,6 @@ class HealthManager {
                 )
                 samples.add(record.startTime to payload)
             }
-            HealthDataType.TOTAL_CALORIES -> readRecords(client, TotalCaloriesBurnedRecord::class, startTime, endTime, limit) { record ->
-                val payload = createSamplePayload(
-                    dataType,
-                    record.startTime,
-                    record.endTime,
-                    record.energy.inKilocalories,
-                    record.metadata
-                )
-                samples.add(record.startTime to payload)
-            }
             HealthDataType.WEIGHT -> readRecords(client, WeightRecord::class, startTime, endTime, limit) { record ->
                 val payload = createSamplePayload(
                     dataType,
@@ -179,18 +167,6 @@ class HealthManager {
                     record.metadata
                 )
                 samples.add(record.time to payload)
-            }
-            HealthDataType.HEART_RATE -> readRecords(client, HeartRateRecord::class, startTime, endTime, limit) { record ->
-                record.samples.forEach { sample ->
-                    val payload = createSamplePayload(
-                        dataType,
-                        sample.time,
-                        sample.time,
-                        sample.beatsPerMinute.toDouble(),
-                        record.metadata
-                    )
-                    samples.add(sample.time to payload)
-                }
             }
             HealthDataType.HEIGHT -> readRecords(client, HeightRecord::class, startTime, endTime, limit) { record ->
                 val payload = createSamplePayload(
@@ -281,32 +257,11 @@ class HealthManager {
                 )
                 client.insertRecords(listOf(record))
             }
-            HealthDataType.TOTAL_CALORIES -> {
-                val record = TotalCaloriesBurnedRecord(
-                    startTime = startTime,
-                    startZoneOffset = zoneOffset(startTime),
-                    endTime = endTime,
-                    endZoneOffset = zoneOffset(endTime),
-                    energy = Energy.kilocalories(value)
-                )
-                client.insertRecords(listOf(record))
-            }
             HealthDataType.WEIGHT -> {
                 val record = WeightRecord(
                     time = startTime,
                     zoneOffset = zoneOffset(startTime),
                     weight = Mass.kilograms(value)
-                )
-                client.insertRecords(listOf(record))
-            }
-            HealthDataType.HEART_RATE -> {
-                val samples = listOf(HeartRateRecord.Sample(time = startTime, beatsPerMinute = value.toBpmLong()))
-                val record = HeartRateRecord(
-                    startTime = startTime,
-                    startZoneOffset = zoneOffset(startTime),
-                    endTime = endTime,
-                    endZoneOffset = zoneOffset(endTime),
-                    samples = samples
                 )
                 client.insertRecords(listOf(record))
             }
@@ -359,10 +314,6 @@ class HealthManager {
 
     private fun zoneOffset(instant: Instant): ZoneOffset? {
         return ZoneId.systemDefault().rules.getOffset(instant)
-    }
-
-    private fun Double.toBpmLong(): Long {
-        return java.lang.Math.round(this.coerceAtLeast(0.0))
     }
 
     suspend fun queryWorkouts(
@@ -443,7 +394,7 @@ class HealthManager {
             null // Permission might not be granted or no data available
         }
 
-        // Aggregate calories - try active calories first, then fall back to total calories
+        // Aggregate active calories
         val caloriesAggregate = try {
             val aggregateRequest = AggregateRequest(
                 metrics = setOf(ActiveCaloriesBurnedRecord.ACTIVE_CALORIES_TOTAL),
@@ -455,25 +406,8 @@ class HealthManager {
                 android.util.Log.d("HealthManager", "Found active calories: $activeCalories kcal")
                 activeCalories
             } else {
-                android.util.Log.d("HealthManager", "No active calories found, trying total calories")
-                // Fall back to total calories
-                try {
-                    val totalRequest = AggregateRequest(
-                        metrics = setOf(TotalCaloriesBurnedRecord.ENERGY_TOTAL),
-                        timeRangeFilter = timeRange
-                    )
-                    val totalResult = client.aggregate(totalRequest)
-                    val totalCalories = totalResult[TotalCaloriesBurnedRecord.ENERGY_TOTAL]?.inKilocalories
-                    if (totalCalories != null && totalCalories > 0) {
-                        android.util.Log.d("HealthManager", "Found total calories: $totalCalories kcal")
-                    } else {
-                        android.util.Log.w("HealthManager", "No calorie data (active or total) available for workout ${session.startTime} to ${session.endTime}")
-                    }
-                    totalCalories
-                } catch (e2: Exception) {
-                    android.util.Log.w("HealthManager", "Total calories aggregation failed: ${e2.message}", e2)
-                    null
-                }
+                android.util.Log.w("HealthManager", "No active calorie data available for workout ${session.startTime} to ${session.endTime}")
+                null
             }
         } catch (e: Exception) {
             android.util.Log.w("HealthManager", "Active calories aggregation failed: ${e.message}", e)
@@ -505,7 +439,7 @@ class HealthManager {
         payload.put("startDate", formatter.format(session.startTime))
         payload.put("endDate", formatter.format(session.endTime))
 
-        // Total energy burned (aggregated from ActiveCaloriesBurnedRecord or TotalCaloriesBurnedRecord)
+        // Total energy burned (aggregated from ActiveCaloriesBurnedRecord)
         aggregatedData.totalEnergyBurned?.let { calories ->
             payload.put("totalEnergyBurned", calories)
         }

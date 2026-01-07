@@ -97,7 +97,7 @@ if (!availability.available) {
 // Ask for separate read/write access scopes
 // Include 'workouts' if you need to query workout sessions
 await Health.requestAuthorization({
-  read: ['steps', 'heartRate', 'weight', 'totalCalories', 'workouts'],
+  read: ['steps', 'weight', 'workouts'],
   write: ['weight'],
 });
 
@@ -118,15 +118,13 @@ await Health.saveSample({
 
 ### Supported data types
 
-| Identifier      | Default unit  | Notes                      |
-| --------------- | ------------- | -------------------------- |
-| `steps`         | `count`       | Step count deltas          |
-| `distance`      | `meter`       | Walking / running distance |
-| `calories`      | `kilocalorie` | Active energy burned       |
-| `totalCalories` | `kilocalorie` | Total energy burned        |
-| `heartRate`     | `bpm`         | Beats per minute           |
-| `weight`        | `kilogram`    | Body mass                  |
-| `height`        | `meter`       | Body height                |
+| Identifier | Default unit  | Notes                      |
+| ---------- | ------------- | -------------------------- |
+| `steps`    | `count`       | Step count deltas          |
+| `distance` | `meter`       | Walking / running distance |
+| `calories` | `kilocalorie` | Active energy burned       |
+| `weight`   | `kilogram`    | Body mass                  |
+| `height`   | `meter`       | Body height                |
 
 All write operations expect the default unit shown above. On Android the `metadata` option is currently ignored by Health Connect.
 
@@ -137,9 +135,9 @@ To query workout sessions, you need to request read permission for `'workouts'`:
 ```ts
 // Request permission to read workouts
 // IMPORTANT: To see totalEnergyBurned and totalDistance in workout data,
-// you MUST also request permissions for 'calories' (or 'totalCalories') and 'distance'
+// you MUST also request permissions for 'calories' and 'distance'
 await Health.requestAuthorization({
-  read: ['workouts', 'calories', 'totalCalories', 'distance'], // Include data types for workout metrics
+  read: ['workouts', 'calories', 'distance'], // Include data types for workout metrics
   write: [],
 });
 
@@ -152,14 +150,14 @@ const { workouts } = await Health.queryWorkouts({
 
 // Each workout may include:
 // - workoutType, duration, startDate, endDate (always present)
-// - totalEnergyBurned (if calories/totalCalories permission granted and data exists)
+// - totalEnergyBurned (if calories permission granted and data exists)
 // - totalDistance (if distance permission granted and data exists)
 ```
 
 **Note:**
 
 - `'workouts'` is a special read-only permission type. You cannot write workouts with this plugin.
-- Workout energy and distance data are aggregated from separate Health Connect records during the workout time period. If you don't request permissions for `calories`/`totalCalories` and `distance`, these fields will be missing from workout results.
+- Workout energy and distance data are aggregated from separate Health Connect records during the workout time period. If you don't request permissions for `calories` and `distance`, these fields will be missing from workout results.
 - If `totalEnergyBurned` or `totalDistance` are missing despite having permissions, it means no calorie or distance data was recorded during that workout period in Health Connect.
 
 ### Sleep
@@ -473,7 +471,7 @@ Queries hydration records from the native health store on Android (Health Connec
 | --------------- | --------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **`dataType`**  | <code><a href="#healthdatatype">HealthDataType</a></code>       |                                                                                                                                                                                                                                           |
 | **`value`**     | <code>number</code>                                             |                                                                                                                                                                                                                                           |
-| **`unit`**      | <code><a href="#healthunit">HealthUnit</a></code>               | Optional unit override. If omitted, the default unit for the data type is used (count for `steps`, meter for `distance`, kilocalorie for `calories` and `totalCalories`, bpm for `heartRate`, kilogram for `weight`, meter for `height`). |
+| **`unit`**      | <code><a href="#healthunit">HealthUnit</a></code>               | Optional unit override. If omitted, the default unit for the data type is used (count for `steps`, meter for `distance`, kilocalorie for `calories`, kilogram for `weight`, meter for `height`). |
 | **`startDate`** | <code>string</code>                                             | ISO 8601 start date for the sample. Defaults to now.                                                                                                                                                                                      |
 | **`endDate`**   | <code>string</code>                                             | ISO 8601 end date for the sample. Defaults to startDate.                                                                                                                                                                                  |
 | **`metadata`**  | <code><a href="#record">Record</a>&lt;string, string&gt;</code> | Metadata key-value pairs forwarded to the native APIs where supported.                                                                                                                                                                    |
@@ -596,7 +594,7 @@ Includes 'hydration' for querying hydration records via queryHydration().
 
 #### HealthDataType
 
-<code>'steps' | 'distance' | 'calories' | 'totalCalories' | 'heartRate' | 'weight' | 'height'</code>
+<code>'steps' | 'distance' | 'calories' | 'weight' | 'height'</code>
 
 
 #### HealthUnit
