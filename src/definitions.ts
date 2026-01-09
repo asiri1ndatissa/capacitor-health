@@ -1,34 +1,26 @@
-export type HealthDataType = 'steps' | 'distance' | 'calories' | 'weight' | 'height';
-
-export type HealthUnit = 'count' | 'meter' | 'kilocalorie' | 'bpm' | 'kilogram';
-
 /**
  * Data types that can be requested for read authorization.
- * Includes 'workouts' for querying workout sessions via queryWorkouts().
  * Includes 'sleep' for querying sleep sessions via querySleep().
  * Includes 'hydration' for querying hydration records via queryHydration().
  */
-export type ReadAuthorizationType = HealthDataType | 'workouts' | 'sleep' | 'hydration';
+export type ReadAuthorizationType = 'sleep' | 'hydration';
 
 export interface AuthorizationOptions {
   /**
    * Data types that should be readable after authorization.
-   * Include 'workouts' to enable queryWorkouts() method.
    */
   read?: ReadAuthorizationType[];
-  /** Data types that should be writable after authorization. */
-  write?: HealthDataType[];
 }
 
 export interface AuthorizationStatus {
-  /** Data types (and 'workouts') that are authorized for reading */
+  /** Data types that are authorized for reading */
   readAuthorized: ReadAuthorizationType[];
-  /** Data types (and 'workouts') that are denied for reading */
+  /** Data types that are denied for reading */
   readDenied: ReadAuthorizationType[];
-  /** Data types that are authorized for writing */
-  writeAuthorized: HealthDataType[];
-  /** Data types that are denied for writing */
-  writeDenied: HealthDataType[];
+  /** Data types that are authorized for writing (always empty) */
+  writeAuthorized: [];
+  /** Data types that are denied for writing (always empty) */
+  writeDenied: [];
 }
 
 export interface AvailabilityResult {
@@ -38,96 +30,7 @@ export interface AvailabilityResult {
   reason?: string;
 }
 
-export interface QueryOptions {
-  /** The type of data to retrieve from the health store. */
-  dataType: HealthDataType;
-  /** Inclusive ISO 8601 start date (defaults to now - 1 day). */
-  startDate?: string;
-  /** Exclusive ISO 8601 end date (defaults to now). */
-  endDate?: string;
-  /** Maximum number of samples to return (defaults to 100). */
-  limit?: number;
-  /** Return results sorted ascending by start date (defaults to false). */
-  ascending?: boolean;
-}
-
-export interface HealthSample {
-  dataType: HealthDataType;
-  value: number;
-  unit: HealthUnit;
-  startDate: string;
-  endDate: string;
-  sourceName?: string;
-  sourceId?: string;
-}
-
-export interface ReadSamplesResult {
-  samples: HealthSample[];
-}
-
-export type WorkoutType =
-  | 'running'
-  | 'cycling'
-  | 'walking'
-  | 'swimming'
-  | 'yoga'
-  | 'strengthTraining'
-  | 'hiking'
-  | 'tennis'
-  | 'basketball'
-  | 'soccer'
-  | 'americanFootball'
-  | 'baseball'
-  | 'crossTraining'
-  | 'elliptical'
-  | 'rowing'
-  | 'stairClimbing'
-  | 'traditionalStrengthTraining'
-  | 'waterFitness'
-  | 'waterPolo'
-  | 'waterSports'
-  | 'wrestling'
-  | 'other';
-
 export type SleepStage = 'unknown' | 'awake' | 'sleeping' | 'outOfBed' | 'awakeInBed' | 'light' | 'deep' | 'rem';
-
-export interface QueryWorkoutsOptions {
-  /** Optional workout type filter. If omitted, all workout types are returned. */
-  workoutType?: WorkoutType;
-  /** Inclusive ISO 8601 start date (defaults to now - 1 day). */
-  startDate?: string;
-  /** Exclusive ISO 8601 end date (defaults to now). */
-  endDate?: string;
-  /** Maximum number of workouts to return (defaults to 100). */
-  limit?: number;
-  /** Return results sorted ascending by start date (defaults to false). */
-  ascending?: boolean;
-}
-
-export interface Workout {
-  /** The type of workout. */
-  workoutType: WorkoutType;
-  /** Duration of the workout in seconds. */
-  duration: number;
-  /** Total energy burned in kilocalories (if available). */
-  totalEnergyBurned?: number;
-  /** Total distance in meters (if available). */
-  totalDistance?: number;
-  /** ISO 8601 start date of the workout. */
-  startDate: string;
-  /** ISO 8601 end date of the workout. */
-  endDate: string;
-  /** Source name that recorded the workout. */
-  sourceName?: string;
-  /** Source bundle identifier. */
-  sourceId?: string;
-  /** Additional metadata (if available). */
-  metadata?: Record<string, string>;
-}
-
-export interface QueryWorkoutsResult {
-  workouts: Workout[];
-}
 
 export interface QuerySleepOptions {
   /** Inclusive ISO 8601 start date (defaults to now - 1 day). */
@@ -202,22 +105,6 @@ export interface QueryHydrationResult {
   hydrationRecords: HydrationRecord[];
 }
 
-export interface WriteSampleOptions {
-  dataType: HealthDataType;
-  value: number;
-  /**
-   * Optional unit override. If omitted, the default unit for the data type is used
-   * (count for `steps`, meter for `distance`, kilocalorie for `calories`, kilogram for `weight`, meter for `height`).
-   */
-  unit?: HealthUnit;
-  /** ISO 8601 start date for the sample. Defaults to now. */
-  startDate?: string;
-  /** ISO 8601 end date for the sample. Defaults to startDate. */
-  endDate?: string;
-  /** Metadata key-value pairs forwarded to the native APIs where supported. */
-  metadata?: Record<string, string>;
-}
-
 export interface HealthPlugin {
   /** Returns whether the current platform supports the native health SDK. */
   isAvailable(): Promise<AvailabilityResult>;
@@ -225,10 +112,6 @@ export interface HealthPlugin {
   requestAuthorization(options: AuthorizationOptions): Promise<AuthorizationStatus>;
   /** Checks authorization status for the provided data types without prompting the user. */
   checkAuthorization(options: AuthorizationOptions): Promise<AuthorizationStatus>;
-  /** Reads samples for the given data type within the specified time frame. */
-  readSamples(options: QueryOptions): Promise<ReadSamplesResult>;
-  /** Writes a single sample to the native health store. */
-  saveSample(options: WriteSampleOptions): Promise<void>;
 
   /**
    * Get the native Capacitor plugin version
@@ -261,15 +144,6 @@ export interface HealthPlugin {
    * @throws An error if the privacy policy cannot be displayed
    */
   showPrivacyPolicy(): Promise<void>;
-
-  /**
-   * Queries workout sessions from the native health store on Android (Health Connect).
-   *
-   * @param options Query options including optional workout type filter, date range, limit, and sort order
-   * @returns A promise that resolves with the workout sessions
-   * @throws An error if something went wrong
-   */
-  queryWorkouts(options: QueryWorkoutsOptions): Promise<QueryWorkoutsResult>;
 
   /**
    * Queries sleep sessions from the native health store on Android (Health Connect).
