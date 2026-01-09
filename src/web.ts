@@ -7,13 +7,8 @@ import type {
   HealthPlugin,
   QueryHydrationOptions,
   QueryHydrationResult,
-  QueryOptions,
   QuerySleepOptions,
   QuerySleepResult,
-  QueryWorkoutsOptions,
-  QueryWorkoutsResult,
-  ReadSamplesResult,
-  WriteSampleOptions,
 } from './definitions';
 
 export class HealthWeb extends WebPlugin implements HealthPlugin {
@@ -33,14 +28,6 @@ export class HealthWeb extends WebPlugin implements HealthPlugin {
     throw this.unimplemented('Health permissions are only available on native platforms.');
   }
 
-  async readSamples(_options: QueryOptions): Promise<ReadSamplesResult> {
-    throw this.unimplemented('Reading health data is only available on native platforms.');
-  }
-
-  async saveSample(_options: WriteSampleOptions): Promise<void> {
-    throw this.unimplemented('Writing health data is only available on native platforms.');
-  }
-
   async getPluginVersion(): Promise<{ version: string }> {
     return { version: 'web' };
   }
@@ -51,10 +38,6 @@ export class HealthWeb extends WebPlugin implements HealthPlugin {
 
   async showPrivacyPolicy(): Promise<void> {
     // No-op on web - Health Connect privacy policy is Android only
-  }
-
-  async queryWorkouts(_options: QueryWorkoutsOptions): Promise<QueryWorkoutsResult> {
-    throw this.unimplemented('Querying workouts is only available on native platforms.');
   }
 
   async querySleep(_options: QuerySleepOptions): Promise<QuerySleepResult> {
