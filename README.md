@@ -216,6 +216,7 @@ const { sleepSessions } = await Health.querySleep({
 * [`getPluginVersion()`](#getpluginversion)
 * [`openHealthConnectSettings()`](#openhealthconnectsettings)
 * [`showPrivacyPolicy()`](#showprivacypolicy)
+* [`queryWorkouts(...)`](#queryworkouts)
 * [`querySleep(...)`](#querysleep)
 * [`queryHydration(...)`](#queryhydration)
 * [Interfaces](#interfaces)
@@ -318,6 +319,23 @@ or by placing an HTML file at www/privacypolicy.html in your assets.
 --------------------
 
 
+### queryWorkouts(...)
+
+```typescript
+queryWorkouts(options: QueryWorkoutsOptions) => Promise<QueryWorkoutsResult>
+```
+
+Queries workout sessions from the native health store on Android (Health Connect).
+
+| Param         | Type                                                                  | Description                                                                             |
+| ------------- | --------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| **`options`** | <code><a href="#queryworkoutsoptions">QueryWorkoutsOptions</a></code> | Query options including optional workout type filter, date range, limit, and sort order |
+
+**Returns:** <code>Promise&lt;<a href="#queryworkoutsresult">QueryWorkoutsResult</a>&gt;</code>
+
+--------------------
+
+
 ### querySleep(...)
 
 ```typescript
@@ -379,6 +397,37 @@ Queries hydration records from the native health store on Android (Health Connec
 | Prop       | Type                                 | Description                                             |
 | ---------- | ------------------------------------ | ------------------------------------------------------- |
 | **`read`** | <code>ReadAuthorizationType[]</code> | Data types that should be readable after authorization. |
+
+
+#### QueryWorkoutsResult
+
+| Prop           | Type                   |
+| -------------- | ---------------------- |
+| **`workouts`** | <code>Workout[]</code> |
+
+
+#### Workout
+
+| Prop              | Type                                                            | Description                            |
+| ----------------- | --------------------------------------------------------------- | -------------------------------------- |
+| **`workoutType`** | <code><a href="#workouttype">WorkoutType</a></code>             | The type of workout.                   |
+| **`duration`**    | <code>number</code>                                             | Duration of the workout in seconds.    |
+| **`startDate`**   | <code>string</code>                                             | ISO 8601 start date of the workout.    |
+| **`endDate`**     | <code>string</code>                                             | ISO 8601 end date of the workout.      |
+| **`sourceName`**  | <code>string</code>                                             | Source name that recorded the workout. |
+| **`sourceId`**    | <code>string</code>                                             | Source bundle identifier.              |
+| **`metadata`**    | <code><a href="#record">Record</a>&lt;string, string&gt;</code> | Additional metadata (if available).    |
+
+
+#### QueryWorkoutsOptions
+
+| Prop              | Type                                                | Description                                                               |
+| ----------------- | --------------------------------------------------- | ------------------------------------------------------------------------- |
+| **`workoutType`** | <code><a href="#workouttype">WorkoutType</a></code> | Optional workout type filter. If omitted, all workout types are returned. |
+| **`startDate`**   | <code>string</code>                                 | Inclusive ISO 8601 start date (defaults to now - 1 day).                  |
+| **`endDate`**     | <code>string</code>                                 | Exclusive ISO 8601 end date (defaults to now).                            |
+| **`limit`**       | <code>number</code>                                 | Maximum number of workouts to return (defaults to 100).                   |
+| **`ascending`**   | <code>boolean</code>                                | Return results sorted ascending by start date (defaults to false).        |
 
 
 #### QuerySleepResult
@@ -456,15 +505,16 @@ Queries hydration records from the native health store on Android (Health Connec
 #### ReadAuthorizationType
 
 Data types that can be requested for read authorization.
+Includes 'workouts' for querying workout sessions via queryWorkouts().
 Includes 'sleep' for querying sleep sessions via querySleep().
 Includes 'hydration' for querying hydration records via queryHydration().
 
-<code>'sleep' | 'hydration'</code>
+<code>'workouts' | 'sleep' | 'hydration'</code>
 
 
-#### SleepStage
+#### WorkoutType
 
-<code>'unknown' | 'awake' | 'sleeping' | 'outOfBed' | 'awakeInBed' | 'light' | 'deep' | 'rem'</code>
+<code>'running' | 'cycling' | 'walking' | 'swimming' | 'yoga' | 'strengthTraining' | 'hiking' | 'tennis' | 'basketball' | 'soccer' | 'americanFootball' | 'baseball' | 'crossTraining' | 'elliptical' | 'rowing' | 'stairClimbing' | 'traditionalStrengthTraining' | 'waterFitness' | 'waterPolo' | 'waterSports' | 'wrestling' | 'other'</code>
 
 
 #### Record
@@ -472,6 +522,11 @@ Includes 'hydration' for querying hydration records via queryHydration().
 Construct a type with a set of properties K of type T
 
 <code>{ [P in K]: T; }</code>
+
+
+#### SleepStage
+
+<code>'unknown' | 'awake' | 'sleeping' | 'outOfBed' | 'awakeInBed' | 'light' | 'deep' | 'rem'</code>
 
 </docgen-api>
 

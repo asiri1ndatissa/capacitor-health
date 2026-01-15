@@ -2,17 +2,15 @@ package app.capgo.plugin.health
 
 import androidx.health.connect.client.HealthConnectClient
 import androidx.health.connect.client.permission.HealthPermission
+import androidx.health.connect.client.records.ExerciseSessionRecord
 import androidx.health.connect.client.records.HydrationRecord
 import androidx.health.connect.client.records.SleepSessionRecord
 import androidx.health.connect.client.request.ReadRecordsRequest
 import androidx.health.connect.client.time.TimeRangeFilter
-import androidx.health.connect.client.records.metadata.Metadata
 import java.time.Duration
 import com.getcapacitor.JSArray
 import com.getcapacitor.JSObject
 import java.time.Instant
-import java.time.ZoneId
-import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import kotlin.math.min
 import kotlin.collections.buildSet
@@ -21,7 +19,11 @@ class HealthManager {
 
     private val formatter: DateTimeFormatter = DateTimeFormatter.ISO_INSTANT
 
-    fun permissionsFor(includeSleep: Boolean = false, includeHydration: Boolean = false): Set<String> = buildSet {
+    fun permissionsFor(includeWorkouts: Boolean = false, includeSleep: Boolean = false, includeHydration: Boolean = false): Set<String> = buildSet {
+        // Include workout read permission if explicitly requested
+        if (includeWorkouts) {
+            add(HealthPermission.getReadPermission(ExerciseSessionRecord::class))
+        }
         // Include sleep read permission if explicitly requested
         if (includeSleep) {
             add(HealthPermission.getReadPermission(SleepSessionRecord::class))
@@ -34,6 +36,7 @@ class HealthManager {
 
     suspend fun authorizationStatus(
         client: HealthConnectClient,
+        includeWorkouts: Boolean = false,
         includeSleep: Boolean = false,
         includeHydration: Boolean = false
     ): JSObject {
@@ -41,6 +44,16 @@ class HealthManager {
 
         val readAuthorized = JSArray()
         val readDenied = JSArray()
+
+        // Check workout permission if requested
+        if (includeWorkouts) {
+            val workoutPermission = HealthPermission.getReadPermission(ExerciseSessionRecord::class)
+            if (granted.contains(workoutPermission)) {
+                readAuthorized.put("workouts")
+            } else {
+                readDenied.put("workouts")
+            }
+        }
 
         // Check sleep permission if requested
         if (includeSleep) {
@@ -86,6 +99,85 @@ class HealthManager {
         return ZoneId.systemDefault().rules.getOffset(instant)
     }
 
+    suspend fun queryWorkouts(
+        client: HealthConnectClient,
+        workoutType: String?,
+        startTime: Instant,
+        endTime: Instant,
+        limit: Int,
+        ascending: Boolean
+    ): JSArray {
+        val workouts = mutableListOf<Pair<Instant, JSObject>>()
+
+        var pageToken: String? = null
+        val pageSize = if (limit > 0) min(limit, MAX_PAGE_SIZE) else DEFAULT_PAGE_SIZE
+        var fetched = 0
+
+        val exerciseTypeFilter = WorkoutType.fromString(workoutType)
+
+        do {
+            val request = ReadRecordsRequest(
+                recordType = ExerciseSessionRecord::class,
+                timeRangeFilter = TimeRangeFilter.between(startTime, endTime),
+                pageSize = pageSize,
+                pageToken = pageToken
+            )
+            val response = client.readRecords(request)
+
+            response.records.forEach { record ->
+                val session = record as ExerciseSessionRecord
+
+                // Filter by exercise type if specified
+                if (exerciseTypeFilter != null && session.exerciseType != exerciseTypeFilter) {
+                    return@forEach
+                }
+
+                val payload = createWorkoutPayload(session)
+                workouts.add(session.startTime to payload)
+            }
+
+            fetched += response.records.size
+            pageToken = response.pageToken
+        } while (pageToken != null && (limit <= 0 || fetched < limit))
+
+        val sorted = workouts.sortedBy { it.first }
+        val ordered = if (ascending) sorted else sorted.asReversed()
+        val limited = if (limit > 0) ordered.take(limit) else ordered
+
+        val array = JSArray()
+        limited.forEach { array.put(it.second) }
+        return array
+    }
+
+    private fun createWorkoutPayload(session: ExerciseSessionRecord): JSObject {
+        val payload = JSObject()
+
+        // Workout type
+        payload.put("workoutType", WorkoutType.toWorkoutTypeString(session.exerciseType))
+
+        // Duration in seconds
+        val durationSeconds = Duration.between(session.startTime, session.endTime).seconds.toInt()
+        payload.put("duration", durationSeconds)
+
+        // Start and end dates
+        payload.put("startDate", formatter.format(session.startTime))
+        payload.put("endDate", formatter.format(session.endTime))
+
+        // Source information
+        val dataOrigin = session.metadata.dataOrigin
+        payload.put("sourceId", dataOrigin.packageName)
+        payload.put("sourceName", dataOrigin.packageName)
+        session.metadata.device?.let { device ->
+            val manufacturer = device.manufacturer?.takeIf { it.isNotBlank() }
+            val model = device.model?.takeIf { it.isNotBlank() }
+            val label = listOfNotNull(manufacturer, model).joinToString(" ").trim()
+            if (label.isNotEmpty()) {
+                payload.put("sourceName", label)
+            }
+        }
+
+        return payload
+    }
 
     suspend fun querySleep(
         client: HealthConnectClient,

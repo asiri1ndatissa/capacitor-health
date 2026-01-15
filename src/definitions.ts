@@ -1,9 +1,34 @@
 /**
  * Data types that can be requested for read authorization.
+ * Includes 'workouts' for querying workout sessions via queryWorkouts().
  * Includes 'sleep' for querying sleep sessions via querySleep().
  * Includes 'hydration' for querying hydration records via queryHydration().
  */
-export type ReadAuthorizationType = 'sleep' | 'hydration';
+export type ReadAuthorizationType = 'workouts' | 'sleep' | 'hydration';
+
+export type WorkoutType =
+  | 'running'
+  | 'cycling'
+  | 'walking'
+  | 'swimming'
+  | 'yoga'
+  | 'strengthTraining'
+  | 'hiking'
+  | 'tennis'
+  | 'basketball'
+  | 'soccer'
+  | 'americanFootball'
+  | 'baseball'
+  | 'crossTraining'
+  | 'elliptical'
+  | 'rowing'
+  | 'stairClimbing'
+  | 'traditionalStrengthTraining'
+  | 'waterFitness'
+  | 'waterPolo'
+  | 'waterSports'
+  | 'wrestling'
+  | 'other';
 
 export interface AuthorizationOptions {
   /**
@@ -31,6 +56,40 @@ export interface AvailabilityResult {
 }
 
 export type SleepStage = 'unknown' | 'awake' | 'sleeping' | 'outOfBed' | 'awakeInBed' | 'light' | 'deep' | 'rem';
+
+export interface QueryWorkoutsOptions {
+  /** Optional workout type filter. If omitted, all workout types are returned. */
+  workoutType?: WorkoutType;
+  /** Inclusive ISO 8601 start date (defaults to now - 1 day). */
+  startDate?: string;
+  /** Exclusive ISO 8601 end date (defaults to now). */
+  endDate?: string;
+  /** Maximum number of workouts to return (defaults to 100). */
+  limit?: number;
+  /** Return results sorted ascending by start date (defaults to false). */
+  ascending?: boolean;
+}
+
+export interface Workout {
+  /** The type of workout. */
+  workoutType: WorkoutType;
+  /** Duration of the workout in seconds. */
+  duration: number;
+  /** ISO 8601 start date of the workout. */
+  startDate: string;
+  /** ISO 8601 end date of the workout. */
+  endDate: string;
+  /** Source name that recorded the workout. */
+  sourceName?: string;
+  /** Source bundle identifier. */
+  sourceId?: string;
+  /** Additional metadata (if available). */
+  metadata?: Record<string, string>;
+}
+
+export interface QueryWorkoutsResult {
+  workouts: Workout[];
+}
 
 export interface QuerySleepOptions {
   /** Inclusive ISO 8601 start date (defaults to now - 1 day). */
@@ -144,6 +203,15 @@ export interface HealthPlugin {
    * @throws An error if the privacy policy cannot be displayed
    */
   showPrivacyPolicy(): Promise<void>;
+
+  /**
+   * Queries workout sessions from the native health store on Android (Health Connect).
+   *
+   * @param options Query options including optional workout type filter, date range, limit, and sort order
+   * @returns A promise that resolves with the workout sessions
+   * @throws An error if something went wrong
+   */
+  queryWorkouts(options: QueryWorkoutsOptions): Promise<QueryWorkoutsResult>;
 
   /**
    * Queries sleep sessions from the native health store on Android (Health Connect).

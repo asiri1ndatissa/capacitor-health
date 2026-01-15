@@ -23,6 +23,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 
 data class ReadAuthorizationTypes(
+    val includeWorkouts: Boolean,
     val includeSleep: Boolean,
     val includeHydration: Boolean
 )
@@ -35,6 +36,7 @@ class HealthPlugin : Plugin() {
     private val permissionContract = PermissionController.createRequestPermissionResultContract()
 
     // Store pending request data for callback
+    private var pendingIncludeWorkouts: Boolean = false
     private var pendingIncludeSleep: Boolean = false
     private var pendingIncludeHydration: Boolean = false
 
@@ -61,6 +63,7 @@ class HealthPlugin : Plugin() {
         pluginScope.launch {
             val client = getClientOrReject(call) ?: return@launch
             val permissions = manager.permissionsFor(
+                readAuth.includeWorkouts,
                 readAuth.includeSleep,
                 readAuth.includeHydration
             )
@@ -68,6 +71,7 @@ class HealthPlugin : Plugin() {
             if (permissions.isEmpty()) {
                 val status = manager.authorizationStatus(
                     client,
+                    readAuth.includeWorkouts,
                     readAuth.includeSleep,
                     readAuth.includeHydration
                 )
@@ -79,6 +83,7 @@ class HealthPlugin : Plugin() {
             if (granted.containsAll(permissions)) {
                 val status = manager.authorizationStatus(
                     client,
+                    readAuth.includeWorkouts,
                     readAuth.includeSleep,
                     readAuth.includeHydration
                 )
@@ -87,6 +92,7 @@ class HealthPlugin : Plugin() {
             }
 
             // Store types for callback
+            pendingIncludeWorkouts = readAuth.includeWorkouts
             pendingIncludeSleep = readAuth.includeSleep
             pendingIncludeHydration = readAuth.includeHydration
 
@@ -107,14 +113,16 @@ class HealthPlugin : Plugin() {
             return
         }
 
+        val includeWorkouts = pendingIncludeWorkouts
         val includeSleep = pendingIncludeSleep
         val includeHydration = pendingIncludeHydration
+        pendingIncludeWorkouts = false
         pendingIncludeSleep = false
         pendingIncludeHydration = false
 
         pluginScope.launch {
             val client = getClientOrReject(call) ?: return@launch
-            val status = manager.authorizationStatus(client, includeSleep, includeHydration)
+            val status = manager.authorizationStatus(client, includeWorkouts, includeSleep, includeHydration)
             call.resolve(status)
         }
     }
@@ -132,6 +140,7 @@ class HealthPlugin : Plugin() {
             val client = getClientOrReject(call) ?: return@launch
             val status = manager.authorizationStatus(
                 client,
+                readAuth.includeWorkouts,
                 readAuth.includeSleep,
                 readAuth.includeHydration
             )
@@ -142,17 +151,19 @@ class HealthPlugin : Plugin() {
 
     private fun parseReadAuthorizationTypes(call: PluginCall, key: String): ReadAuthorizationTypes {
         val array = call.getArray(key) ?: JSArray()
+        var includeWorkouts = false
         var includeSleep = false
         var includeHydration = false
         for (i in 0 until array.length()) {
             val identifier = array.optString(i, null) ?: continue
             when (identifier) {
+                "workouts" -> includeWorkouts = true
                 "sleep" -> includeSleep = true
                 "hydration" -> includeHydration = true
                 else -> throw IllegalArgumentException("Unsupported data type: $identifier")
             }
         }
-        return ReadAuthorizationTypes(includeSleep, includeHydration)
+        return ReadAuthorizationTypes(includeWorkouts, includeSleep, includeHydration)
     }
 
     private fun getClientOrReject(call: PluginCall): HealthConnectClient? {
@@ -214,6 +225,43 @@ class HealthPlugin : Plugin() {
             call.resolve()
         } catch (e: Exception) {
             call.reject("Failed to show privacy policy", null, e)
+        }
+    }
+
+    @PluginMethod
+    fun queryWorkouts(call: PluginCall) {
+        val workoutType = call.getString("workoutType")
+        val limit = (call.getInt("limit") ?: DEFAULT_LIMIT).coerceAtLeast(0)
+        val ascending = call.getBoolean("ascending") ?: false
+
+        val startInstant = try {
+            manager.parseInstant(call.getString("startDate"), Instant.now().minus(DEFAULT_PAST_DURATION))
+        } catch (e: DateTimeParseException) {
+            call.reject(e.message, null, e)
+            return
+        }
+
+        val endInstant = try {
+            manager.parseInstant(call.getString("endDate"), Instant.now())
+        } catch (e: DateTimeParseException) {
+            call.reject(e.message, null, e)
+            return
+        }
+
+        if (endInstant.isBefore(startInstant)) {
+            call.reject("endDate must be greater than or equal to startDate")
+            return
+        }
+
+        pluginScope.launch {
+            val client = getClientOrReject(call) ?: return@launch
+            try {
+                val workouts = manager.queryWorkouts(client, workoutType, startInstant, endInstant, limit, ascending)
+                val result = JSObject().apply { put("workouts", workouts) }
+                call.resolve(result)
+            } catch (e: Exception) {
+                call.reject(e.message ?: "Failed to query workouts.", null, e)
+            }
         }
     }
 
