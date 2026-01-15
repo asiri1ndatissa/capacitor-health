@@ -94,11 +94,6 @@ class HealthManager {
         return Instant.parse(value)
     }
 
-
-    private fun zoneOffset(instant: Instant): ZoneOffset? {
-        return ZoneId.systemDefault().rules.getOffset(instant)
-    }
-
     suspend fun queryWorkouts(
         client: HealthConnectClient,
         workoutType: String?,
